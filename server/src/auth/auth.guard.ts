@@ -1,9 +1,13 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(
+    private readonly supabaseService: SupabaseService,
+    private readonly usersService: UsersService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -19,7 +23,19 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid or expired token');
     }
 
-    request.user = payload;
+    const dbUser = await this.usersService.findById(payload.sub);
+
+    if (!dbUser) {
+      throw new UnauthorizedException('User role could not be resolved');
+    }
+
+    request.user = {
+      id: payload.sub,
+      sub: payload.sub,
+      email: payload.email,
+      role: dbUser.role,
+    };
+
     return true;
   }
 

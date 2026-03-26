@@ -5,15 +5,14 @@ import { AppService } from './app.service';
 import { SupabaseModule } from './supabase/supabase.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { User } from './users/entities/user.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forRoot({
       type: 'sqlite',
       database: 'data/bytequest.db',
-      entities: [
-        // Add future entities here: Event, Participant, Problem, Submission, Score
-      ],
+      entities: [User],
       synchronize: true,
       logging: true,
     }),

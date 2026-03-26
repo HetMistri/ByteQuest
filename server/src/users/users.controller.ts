@@ -1,12 +1,42 @@
-import { Controller, Post, Get, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { RegisterUserDto, UserResponseDto } from './dto/user.dto';
+import { Auth } from '../auth/auth.decorator';
+import type { AuthUser } from '../auth/auth.decorator';
+import { AuthGuard } from '../auth/auth.guard';
 
 @ApiTags('users')
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Get('me')
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get current authenticated user role',
+    description: 'Returns the authenticated user identity and backend-authoritative role.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Current user resolved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+        email: { type: 'string', example: 'john@example.com' },
+        role: { type: 'string', example: 'coordinator' },
+      },
+    },
+  })
+  me(@Auth() user: AuthUser): { id: string; email: string | null; role: string } {
+    return {
+      id: user.sub,
+      email: user.email ?? null,
+      role: user.role,
+    };
+  }
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
@@ -25,7 +55,7 @@ export class UsersController {
     description: 'Invalid registration payload',
   })
   async register(@Body() dto: RegisterUserDto): Promise<UserResponseDto> {
-    return this.usersService.register(dto.displayName, dto.phone, dto.email);
+    return this.usersService.register(dto.userId, dto.email);
   }
 
   @Get('resolve-identifier')

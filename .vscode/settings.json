@@ -1,0 +1,11 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "ByteQuest",
+            "database": "${workspaceFolder:ByteQuest}/server/data/bytequest.db"
+        }
+    ],
+    "sqltools.useNodeRuntime": true
+}

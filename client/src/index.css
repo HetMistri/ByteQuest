@@ -13,6 +13,10 @@
         --success-border: #4f990e;
         --success-muted: #306700;
 
+        --coordinator-xyz: #4bb0ff;
+        --coordinator-border: #1972b7;
+        --coordinator-muted: #104770;
+
         --failure-xyz: #ff8800;
         --failure-border: #a76802;
         --failure-muted: #5a3801;
@@ -39,6 +43,12 @@
         --accent-xyz: var(--success-xyz);
         --accent-border: var(--success-border);
         --accent-muted: var(--success-muted);
+    }
+
+    body[data-accent="coordinator"] {
+        --accent-xyz: var(--coordinator-xyz);
+        --accent-border: var(--coordinator-border);
+        --accent-muted: var(--coordinator-muted);
     }
 
     * {
@@ -97,6 +107,16 @@
         color: var(--accent-xyz);
         font-size: clamp(1.4rem, 3.1vw, 2.5rem);
         line-height: 1;
+    }
+
+    .role-badge {
+        border: 2px solid var(--accent-border);
+        color: var(--accent-xyz);
+        font-size: 0.55rem;
+        padding: 6px 8px;
+        line-height: 1;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
     }
 
     .header-actions {

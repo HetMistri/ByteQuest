@@ -7,6 +7,12 @@ type AuthResult = {
   message?: string;
 };
 
+type MeResponse = {
+  id: string;
+  email: string | null;
+  role: string;
+};
+
 type RegisterInput = {
   displayName: string;
   phone: string;
@@ -15,7 +21,7 @@ type RegisterInput = {
 };
 
 export const register = async ({ displayName, phone, email, password }: RegisterInput): Promise<AuthResult> => {
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -36,7 +42,10 @@ export const register = async ({ displayName, phone, email, password }: Register
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ displayName, phone, email }),
+      body: JSON.stringify({
+        userId: data.user?.id,
+        email,
+      }),
     });
   } catch {
     // Supabase remains source of truth for auth. Backend sync failures are non-blocking.
@@ -101,4 +110,23 @@ export const logout = async () => {
   }
 
   return { error: null };
+};
+
+export const getCurrentUserRole = async (accessToken: string): Promise<string | null> => {
+  try {
+    const response = await fetch(`${API_URL}/users/me`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const me = (await response.json()) as MeResponse;
+    return me.role;
+  } catch {
+    return null;
+  }
 };

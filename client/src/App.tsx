@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "./lib/supabase";
-import { getSession, logout } from "./lib/auth";
+import { getCurrentUserRole, getSession, logout } from "./lib/auth";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
 import Auth from "./auth/Auth";
@@ -11,6 +11,7 @@ import Profile from "./components/Profile";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,7 +36,20 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    document.body.dataset.accent = session ? "success" : "failure";
+    const setAccent = async () => {
+      if (!session) {
+        setRole(null);
+        document.body.dataset.accent = "failure";
+        return;
+      }
+
+      const resolvedRole = await getCurrentUserRole(session.access_token);
+      const nextRole = resolvedRole ?? "participant";
+      setRole(nextRole);
+      document.body.dataset.accent = nextRole === "coordinator" ? "coordinator" : "success";
+    };
+
+    setAccent();
   }, [session]);
 
   const handleLogout = async () => {
@@ -64,6 +78,7 @@ export default function App() {
           onLogout={() => undefined}
           onToggleProfile={() => undefined}
           isProfileOpen={false}
+          isCoordinator={false}
         />
         <div className="app-frame">
           <main className="app-main">
@@ -82,6 +97,7 @@ export default function App() {
         onLogout={handleLogout}
         onToggleProfile={handleToggleProfile}
         isProfileOpen={location.pathname === "/profile"}
+        isCoordinator={role === "coordinator"}
       />
       <div className="app-frame">
         <main className="app-main">

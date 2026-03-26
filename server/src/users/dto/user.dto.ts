@@ -2,25 +2,17 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterUserDto {
   @ApiProperty({
-    description: 'Display name shown in leaderboard, game and profile',
-    example: 'John Doe',
-    minLength: 3,
-    maxLength: 255,
+    description: 'Supabase user id',
+    example: '123e4567-e89b-12d3-a456-426614174000',
   })
-  displayName: string;
+  userId?: string;
 
   @ApiProperty({
-    description: 'Phone number',
-    example: '+919999999999',
-  })
-  phone: string;
-
-  @ApiProperty({
-    description: 'Email address for the account',
+    description: 'Email address for fallback user resolution',
     example: 'john@example.com',
     format: 'email',
   })
-  email: string;
+  email?: string;
 }
 
 export class ResolveIdentifierDto {
@@ -39,16 +31,10 @@ export class UserResponseDto {
   id: string;
 
   @ApiProperty({
-    description: 'Display name',
-    example: 'John Doe',
+    description: 'Assigned role for authorization',
+    example: 'participant',
   })
-  display_name: string;
-
-  @ApiProperty({
-    description: 'Email address',
-    example: 'john@example.com',
-  })
-  email: string;
+  role: string;
 
   @ApiProperty({
     description: 'Account creation timestamp',

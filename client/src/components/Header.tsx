@@ -5,14 +5,16 @@ type HeaderProps = {
     onLogout: () => void;
     onToggleProfile: () => void;
     isProfileOpen: boolean;
+    isCoordinator: boolean;
 };
 
-export default function Header({ isAuthenticated, onLogout, onToggleProfile, isProfileOpen }: HeaderProps) {
+export default function Header({ isAuthenticated, onLogout, onToggleProfile, isProfileOpen, isCoordinator }: HeaderProps) {
     return (
         <header className="header">
             <div className="header-left">
                 <img src={Logo} alt="ByteQuest logo" className="header-logo" />
                 <h1 className="header-title">ByteQuest</h1>
+                {isAuthenticated && isCoordinator ? <span className="role-badge">Coordinator</span> : null}
             </div>
             <div className="header-actions">
                 <button

@@ -1,43 +1,54 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { jwtVerify } from 'jose';
 
 @Injectable()
 export class SupabaseService {
-  private supabase: SupabaseClient | null = null;
+  private adminClient: SupabaseClient | null = null;
+  private authClient: SupabaseClient | null = null;
   private readonly logger = new Logger(SupabaseService.name);
+  private readonly supabaseUrl = process.env.SUPABASE_URL;
+  private readonly supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  private readonly supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+  private hasWarnedMissingTokenVerifyConfig = false;
 
   constructor() {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+    const supabaseUrl = this.supabaseUrl;
+    const supabaseAnonKey = this.supabaseAnonKey;
+    const supabaseServiceKey = this.supabaseServiceKey;
 
     if (!supabaseUrl) {
       this.logger.warn('SUPABASE_URL not set - Supabase service disabled');
       return;
     }
 
-    if (!supabaseServiceKey) {
-      this.logger.warn('SUPABASE_SERVICE_KEY not set - Supabase admin operations disabled');
-      return;
+    if (supabaseAnonKey) {
+      this.authClient = createClient(supabaseUrl, supabaseAnonKey);
+    } else {
+      this.logger.warn('SUPABASE_ANON_KEY not set - token verification disabled');
     }
 
-    this.supabase = createClient(supabaseUrl, supabaseServiceKey);
+    if (!supabaseServiceKey) {
+      this.logger.warn('SUPABASE_SERVICE_KEY not set - Supabase admin operations disabled');
+    } else {
+      this.adminClient = createClient(supabaseUrl, supabaseServiceKey);
+    }
+
     this.logger.log('Supabase service initialized');
   }
 
   getClient(): SupabaseClient | null {
-    return this.supabase;
+    return this.adminClient;
   }
 
   isEnabled(): boolean {
-    return this.supabase !== null;
+    return this.adminClient !== null;
   }
 
   async getUserByUsername(username: string) {
-    if (!this.supabase) return null;
+    if (!this.adminClient) return null;
 
     try {
-      const { data, error } = await this.supabase.auth.admin.listUsers();
+      const { data, error } = await this.adminClient.auth.admin.listUsers();
 
       if (error) {
         return null;
@@ -55,10 +66,10 @@ export class SupabaseService {
   }
 
   async getUserByEmail(email: string) {
-    if (!this.supabase) return null;
+    if (!this.adminClient) return null;
 
     try {
-      const { data: users, error } = await this.supabase.auth.admin.listUsers();
+      const { data: users, error } = await this.adminClient.auth.admin.listUsers();
 
       if (error) {
         return null;
@@ -73,10 +84,10 @@ export class SupabaseService {
   }
 
   async getUserByIdentifier(identifier: string) {
-    if (!this.supabase) return null;
+    if (!this.adminClient) return null;
 
     try {
-      const { data: users, error } = await this.supabase.auth.admin.listUsers();
+      const { data: users, error } = await this.adminClient.auth.admin.listUsers();
 
       if (error) {
         return null;
@@ -96,20 +107,24 @@ export class SupabaseService {
   }
 
   async verifyToken(token: string): Promise<{ sub: string; email?: string } | null> {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      this.logger.warn('Cannot verify token: SUPABASE_URL or SUPABASE_ANON_KEY not set');
+    if (!this.authClient) {
+      if (!this.hasWarnedMissingTokenVerifyConfig) {
+        this.logger.warn('Cannot verify token: SUPABASE_URL or SUPABASE_ANON_KEY not set');
+        this.hasWarnedMissingTokenVerifyConfig = true;
+      }
       return null;
     }
 
     try {
-      const secret = new TextEncoder().encode(supabaseAnonKey.split('.')[1]);
-      const verified = await jwtVerify(token, secret);
+      const { data, error } = await this.authClient.auth.getUser(token);
+
+      if (error || !data.user) {
+        return null;
+      }
+
       return {
-        sub: verified.payload.sub as string,
-        email: verified.payload.email as string | undefined,
+        sub: data.user.id,
+        email: data.user.email,
       };
     } catch (error) {
       this.logger.error(`Token verification failed: ${error}`);
