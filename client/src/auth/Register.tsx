@@ -1,28 +1,87 @@
 import { register } from "../lib/auth";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
 export default function Register() {
+  const [displayName, setDisplayName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleRegister = async () => {
-    await register(email, password);
-    console.log("Registered user:", email);
+  const handleRegister = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setMessage("");
+    setErrorMessage("");
+    setIsSubmitting(true);
+
+    const result = await register({
+      displayName: displayName.trim(),
+      phone: phone.trim(),
+      email: email.trim(),
+      password,
+    });
+
+    if (result.error) {
+      setErrorMessage(result.error);
+    } else {
+      setMessage(result.message ?? "Registered successfully.");
+      setPassword("");
+    }
+
+    setIsSubmitting(false);
   };
 
   return (
-    <div className="bg-gray-100 min-h-screen flex items-center justify-center">
-      <div className="bg-white p-8 rounded shadow-md">
-        <h1 className="text-center text-2xl font-bold mb-4">Register</h1>
-        <div className="flex flex-col gap-4">
-          <input onChange={(e) => setEmail(e.target.value)} placeholder="Email" 
-          className=" focus:border-b-green-600"/>
-          <input onChange={(e) => setPassword(e.target.value)} placeholder="Password" />
-          <button onClick={handleRegister}>Register</button>
-        </div>
-      </div>
-    </div>
+    <form className="auth-form" onSubmit={handleRegister}>
+      <label htmlFor="register-display-name">Display Name</label>
+      <input
+        id="register-display-name"
+        value={displayName}
+        onChange={(event) => setDisplayName(event.target.value)}
+        placeholder="display name"
+        minLength={3}
+        required
+      />
+
+      <label htmlFor="register-phone">Phone</label>
+      <input
+        id="register-phone"
+        value={phone}
+        onChange={(event) => setPhone(event.target.value)}
+        placeholder="phone"
+        minLength={8}
+        required
+      />
+
+      <label htmlFor="register-email">Email</label>
+      <input
+        id="register-email"
+        type="email"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        placeholder="email"
+        required
+      />
+
+      <label htmlFor="register-password">Password</label>
+      <input
+        id="register-password"
+        type="password"
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        placeholder="password"
+        minLength={6}
+        required
+      />
+
+      {message ? <p className="success-text">{message}</p> : null}
+      {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
+
+      <button className="primary-button" type="submit" disabled={isSubmitting}>
+        {isSubmitting ? "Registering..." : "Register"}
+      </button>
+    </form>
   );
 }
-
-
