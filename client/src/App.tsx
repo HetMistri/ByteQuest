@@ -115,6 +115,8 @@ export default function App() {
                     displayName={
                       (session.user.user_metadata?.display_name as string | undefined) ?? "Player"
                     }
+                    role={role ?? "participant"}
+                    accessToken={session.access_token}
                   />
                 ) : (
                   <Navigate to="/auth" replace />
