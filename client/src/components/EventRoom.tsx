@@ -51,7 +51,7 @@ export default function EventRoom({ accessToken, role }: EventRoomProps) {
         const joinedParticipants = await listParticipants(accessToken, activeEventId);
         setParticipants(joinedParticipants);
 
-        if (details.status !== "running") {
+        if (!isCoordinator && details.status !== "running") {
           navigate("/event/waiting", { replace: true });
         }
       } catch {
@@ -62,7 +62,7 @@ export default function EventRoom({ accessToken, role }: EventRoomProps) {
     loadRoom();
     const interval = window.setInterval(loadRoom, 8000);
     return () => window.clearInterval(interval);
-  }, [accessToken, navigate]);
+  }, [accessToken, isCoordinator, navigate]);
 
   useEffect(() => {
     if (!event?.startedAt) {

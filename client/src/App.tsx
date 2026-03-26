@@ -143,7 +143,10 @@ export default function App() {
               path="/event/waiting"
               element={
                 isAuthenticated && session ? (
-                  <EventWaitingRoom accessToken={session.access_token} />
+                  <EventWaitingRoom
+                    accessToken={session.access_token}
+                    role={role ?? "participant"}
+                  />
                 ) : (
                   <Navigate to="/auth" replace />
                 )

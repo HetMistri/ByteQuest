@@ -35,7 +35,7 @@ export class EventController {
   @ApiOperation({ summary: 'List scheduled events' })
   @ApiResponse({ status: 200, type: EventResponseDto, isArray: true })
   listScheduledEvents(@Auth() user: AuthUser) {
-    return this.eventService.listScheduledEvents(user.role);
+    return this.eventService.listScheduledEvents(user.sub, user.role);
   }
 
   @Get(':id')

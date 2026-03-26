@@ -109,13 +109,13 @@ export default function EventsPage({ role, accessToken, userId }: EventsPageProp
 
     try {
       await joinEvent(accessToken, selectedEvent.id, {
-        password: joinPassword.trim() || undefined,
+        password: isCoordinator ? undefined : joinPassword.trim() || undefined,
       });
 
       setActiveEventId(selectedEvent.id);
       const details = await getEventDetails(accessToken, selectedEvent.id);
 
-      if (details.status === "running") {
+      if (isCoordinator || details.status === "running") {
         navigate("/event", { replace: true });
       } else {
         navigate("/event/waiting", { replace: true });
@@ -193,14 +193,18 @@ export default function EventsPage({ role, accessToken, userId }: EventsPageProp
               ) : null}
 
               <div className="join-panel">
-                <label htmlFor="joinPassword">Password (if required)</label>
-                <input
-                  id="joinPassword"
-                  type="text"
-                  value={joinPassword}
-                  onChange={(event) => setJoinPassword(event.target.value)}
-                  placeholder="Enter event password"
-                />
+                {!isCoordinator ? (
+                  <>
+                    <label htmlFor="joinPassword">Password (if required)</label>
+                    <input
+                      id="joinPassword"
+                      type="text"
+                      value={joinPassword}
+                      onChange={(event) => setJoinPassword(event.target.value)}
+                      placeholder="Enter event password"
+                    />
+                  </>
+                ) : null}
                 <button
                   type="button"
                   className="primary-button"

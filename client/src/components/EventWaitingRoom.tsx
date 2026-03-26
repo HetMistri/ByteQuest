@@ -5,9 +5,10 @@ import { clearActiveEventId, getActiveEventId } from "../lib/event-session";
 
 type EventWaitingRoomProps = {
   accessToken: string;
+  role: string;
 };
 
-export default function EventWaitingRoom({ accessToken }: EventWaitingRoomProps) {
+export default function EventWaitingRoom({ accessToken, role }: EventWaitingRoomProps) {
   const [event, setEvent] = useState<EventSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
@@ -23,6 +24,11 @@ export default function EventWaitingRoom({ accessToken }: EventWaitingRoomProps)
   }, [event]);
 
   useEffect(() => {
+    if (role === "coordinator") {
+      navigate("/event", { replace: true });
+      return;
+    }
+
     const activeEventId = getActiveEventId();
     if (!activeEventId) {
       navigate("/events", { replace: true });
@@ -46,7 +52,7 @@ export default function EventWaitingRoom({ accessToken }: EventWaitingRoomProps)
     loadEvent();
     const interval = window.setInterval(loadEvent, 8000);
     return () => window.clearInterval(interval);
-  }, [accessToken, navigate]);
+  }, [accessToken, navigate, role]);
 
   useEffect(() => {
     if (!event?.startedAt) {

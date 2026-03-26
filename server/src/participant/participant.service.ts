@@ -25,19 +25,6 @@ export class ParticipantService {
       throw new NotFoundException('Event not found');
     }
 
-    if (role === 'coordinator') {
-      if (event.status !== 'scheduled' && event.status !== 'running') {
-        throw new BadRequestException('Coordinators can only join scheduled or running events');
-      }
-    } else if (event.status !== 'scheduled') {
-      throw new BadRequestException('Participants can only join scheduled events');
-    }
-
-    const providedPassword = password?.trim();
-    if (event.passwordHash && event.passwordHash !== providedPassword) {
-      throw new ForbiddenException('Invalid event password');
-    }
-
     const existingParticipant = await this.prisma.participant.findUnique({
       where: {
         userId_eventId: {
@@ -56,7 +43,26 @@ export class ParticipantService {
     });
 
     if (existingParticipant) {
-      throw new ConflictException('Participant already joined this event');
+      if (event.status === 'ended') {
+        throw new BadRequestException('Event is ended and cannot be rejoined');
+      }
+
+      return existingParticipant;
+    }
+
+    if (role === 'coordinator') {
+      if (event.status === 'ended') {
+        throw new BadRequestException('Coordinators can only join active events');
+      }
+    } else if (event.status !== 'scheduled') {
+      throw new BadRequestException('Participants can only join scheduled events');
+    }
+
+    if (role !== 'coordinator') {
+      const providedPassword = password?.trim();
+      if (event.passwordHash && event.passwordHash !== providedPassword) {
+        throw new ForbiddenException('Invalid event password');
+      }
     }
 
     if (role !== 'coordinator') {
