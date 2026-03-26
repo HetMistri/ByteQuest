@@ -177,6 +177,72 @@ export class ParticipantService {
     }));
   }
 
+  async getLeaderboard(eventId: string, requesterId: string, role: string) {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { id: true },
+    });
+
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    if (role !== 'coordinator') {
+      const membership = await this.prisma.participant.findUnique({
+        where: {
+          userId_eventId: {
+            userId: requesterId,
+            eventId,
+          },
+        },
+        select: { userId: true },
+      });
+
+      if (!membership) {
+        throw new ForbiddenException('Join event before viewing leaderboard');
+      }
+    }
+
+    const totalProblems = await this.prisma.problem.count({ where: { eventId } });
+
+    const rows = await this.prisma.participant.findMany({
+      where: { eventId },
+      orderBy: [
+        { score: 'desc' },
+        { currentQuestion: 'desc' },
+        { joinedAt: 'asc' },
+        { userId: 'asc' },
+      ],
+      select: {
+        userId: true,
+        user: {
+          select: {
+            displayName: true,
+          },
+        },
+        score: true,
+        currentQuestion: true,
+        joinedAt: true,
+      },
+    });
+
+    return rows.map((row, index) => {
+      const solvedProblems = Math.min(totalProblems, Math.max(0, row.currentQuestion - 1));
+      const progressPercent = totalProblems === 0 ? 0 : Math.floor((solvedProblems / totalProblems) * 100);
+
+      return {
+        rank: index + 1,
+        userId: row.userId,
+        displayName: row.user?.displayName ?? null,
+        score: row.score,
+        solvedProblems,
+        totalProblems,
+        progressPercent,
+        joinedAt: row.joinedAt,
+      };
+    });
+  }
+
   async kickParticipant(requesterId: string, eventId: string, targetUserId: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },

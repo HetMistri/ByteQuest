@@ -76,9 +76,21 @@ export type SubmissionResult = {
   isCorrect: boolean;
   isFirstCorrect: boolean;
   attemptCount: number;
+  awardedPoints?: number;
   message: string;
   nextQuestionIndex?: number;
   completed?: boolean;
+};
+
+export type LeaderboardEntry = {
+  rank: number;
+  userId: string;
+  displayName?: string | null;
+  score: number;
+  solvedProblems: number;
+  totalProblems: number;
+  progressPercent: number;
+  joinedAt: string;
 };
 
 export type PersonalResultItem = {
@@ -180,6 +192,20 @@ export async function listParticipants(token: string, eventId: string): Promise<
   }
 
   return (await response.json()) as ParticipantRecord[];
+}
+
+export async function getLeaderboard(token: string, eventId: string): Promise<LeaderboardEntry[]> {
+  const response = await fetch(`${API_URL}/events/${eventId}/leaderboard`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to load leaderboard");
+  }
+
+  return (await response.json()) as LeaderboardEntry[];
 }
 
 export async function kickParticipant(token: string, eventId: string, userId: string): Promise<void> {

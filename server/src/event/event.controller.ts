@@ -10,6 +10,7 @@ import { EventResponseDto } from './dto/event-response.dto';
 import { EventService } from './event.service';
 import { JoinEventDto } from '../participant/dto/join-event.dto';
 import { ParticipantResponseDto } from '../participant/dto/participant-response.dto';
+import { LeaderboardEntryDto } from '../participant/dto/leaderboard-entry.dto';
 import { ParticipantService } from '../participant/participant.service';
 import { ProblemService } from '../problem/problem.service';
 import { CreateProblemDto } from '../problem/dto/create-problem.dto';
@@ -118,6 +119,13 @@ export class EventController {
   @ApiResponse({ status: 200, type: ParticipantResponseDto, isArray: true })
   listParticipants(@Param('id') eventId: string, @Auth() user: AuthUser) {
     return this.participantService.listParticipants(eventId, user.sub, user.role);
+  }
+
+  @Get(':id/leaderboard')
+  @ApiOperation({ summary: 'Get event leaderboard sorted by score' })
+  @ApiResponse({ status: 200, type: LeaderboardEntryDto, isArray: true })
+  getLeaderboard(@Param('id') eventId: string, @Auth() user: AuthUser) {
+    return this.participantService.getLeaderboard(eventId, user.sub, user.role);
   }
 
   @Post(':id/kick/:userId')

@@ -6,7 +6,12 @@ import {
   getActiveEventId,
   getCompletedEventId,
 } from "../../lib/event-session";
-import { getPersonalResults, type PersonalResultsResponse } from "../../lib/events";
+import {
+  getLeaderboard,
+  getPersonalResults,
+  type LeaderboardEntry,
+  type PersonalResultsResponse,
+} from "../../lib/events";
 
 type EventResultsPageProps = {
   accessToken: string;
@@ -27,6 +32,7 @@ const formatDuration = (totalSeconds: number | null): string => {
 
 export default function EventResultsPage({ accessToken }: EventResultsPageProps) {
   const [results, setResults] = useState<PersonalResultsResponse | null>(null);
+  const [podium, setPodium] = useState<LeaderboardEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -39,8 +45,13 @@ export default function EventResultsPage({ accessToken }: EventResultsPageProps)
 
     const loadResults = async () => {
       try {
-        const response = await getPersonalResults(accessToken, targetEventId);
+        const [response, leaderboard] = await Promise.all([
+          getPersonalResults(accessToken, targetEventId),
+          getLeaderboard(accessToken, targetEventId),
+        ]);
+
         setResults(response);
+        setPodium(leaderboard.slice(0, 3));
       } catch {
         setError("Could not load personal results.");
       }
@@ -66,6 +77,18 @@ export default function EventResultsPage({ accessToken }: EventResultsPageProps)
       <p className="status-text">Your Total Time Spent: {formatDuration(results.totalTimeSpentSeconds)}</p>
       <p className="status-text">Event Elapsed: {formatDuration(results.totalElapsedSeconds)}</p>
       <p className="status-text">Time Remaining: {formatDuration(results.timeRemainingSeconds)}</p>
+
+      <div className="event-create-panel">
+        <h3 className="section-title mini">Podium</h3>
+        {podium.length === 0 ? <p className="status-text">Leaderboard is not available.</p> : null}
+        <ul className="menu-list">
+          {podium.map((entry) => (
+            <li key={entry.userId} className="menu-item">
+              {entry.rank} place: {entry.displayName?.trim() || `${entry.userId.slice(0, 8)}...`} | Score: {entry.score}
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <div className="event-create-panel">
         <h3 className="section-title mini">Personal History</h3>

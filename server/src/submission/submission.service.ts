@@ -25,6 +25,8 @@ export class SubmissionService {
       select: {
         id: true,
         status: true,
+        startedAt: true,
+        timeLimit: true,
       },
     });
 
@@ -113,6 +115,16 @@ export class SubmissionService {
       };
     }
 
+    const nowMs = Date.now();
+    const eventStartMs = event.startedAt ? new Date(event.startedAt).getTime() : null;
+    const totalDurationSeconds = event.timeLimit * 60;
+    const elapsedSeconds = eventStartMs
+      ? Math.min(totalDurationSeconds, Math.max(0, Math.floor((nowMs - eventStartMs) / 1000)))
+      : totalDurationSeconds;
+    const remainingSeconds = Math.max(0, totalDurationSeconds - elapsedSeconds);
+
+    const awardedPoints = Math.max(1, Math.ceil((remainingSeconds / Math.max(1, totalDurationSeconds)) * 100));
+
     const updatedParticipant = await this.prisma.participant.update({
       where: {
         userId_eventId: {
@@ -121,6 +133,9 @@ export class SubmissionService {
         },
       },
       data: {
+        score: {
+          increment: awardedPoints,
+        },
         currentQuestion: {
           increment: 1,
         },
@@ -144,7 +159,10 @@ export class SubmissionService {
       isCorrect: true,
       isFirstCorrect,
       attemptCount,
-      message: nextProblem ? 'Correct! Moved to next problem.' : 'Correct! Event problems completed.',
+      awardedPoints,
+      message: nextProblem
+        ? `Correct! +${awardedPoints} points. Moved to next problem.`
+        : `Correct! +${awardedPoints} points. Event problems completed.`,
       nextQuestionIndex: updatedParticipant.currentQuestion,
       completed: !nextProblem,
     };

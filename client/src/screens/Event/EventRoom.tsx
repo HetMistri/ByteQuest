@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   endEvent,
   getEventDetails,
+  getLeaderboard,
   kickParticipant,
   listParticipants,
   listProblems,
@@ -10,7 +11,7 @@ import {
   startEvent,
   submitAnswer,
   type EventDetails,
-  type ParticipantRecord,
+  type LeaderboardEntry,
   type ProblemRecord,
   type SubmissionResult,
   updateProblem,
@@ -40,7 +41,7 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
   const [event, setEvent] = useState<EventDetails | null>(null);
   const [lastSyncAtMs, setLastSyncAtMs] = useState<number | null>(null);
   const [tickNowMs, setTickNowMs] = useState<number>(Date.now());
-  const [participants, setParticipants] = useState<ParticipantRecord[]>([]);
+  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [problems, setProblems] = useState<ProblemRecord[]>([]);
   const [editingProblemId, setEditingProblemId] = useState<string | null>(null);
   const [problemEditDraft, setProblemEditDraft] = useState({
@@ -70,7 +71,13 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
       setLastSyncAtMs(Date.now());
 
       const joinedParticipants = await listParticipants(accessToken, activeEventId);
-      setParticipants(joinedParticipants);
+
+      if (isCoordinator || details.status === "ended") {
+        const ranking = await getLeaderboard(accessToken, activeEventId);
+        setLeaderboardEntries(ranking);
+      } else {
+        setLeaderboardEntries([]);
+      }
 
       if (isCoordinator) {
         const eventProblems = await listProblems(accessToken, activeEventId);
@@ -471,7 +478,7 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
 
         {canShowLeaderboard ? (
           <LeaderboardPanel
-            participants={participants}
+            entries={leaderboardEntries}
             showKick={isCoordinator}
             isSubmitting={isSubmitting}
             onKick={handleKickParticipant}
