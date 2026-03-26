@@ -12,9 +12,22 @@ export type EventSummary = {
   createdAt: string;
 };
 
+export type ParticipantRecord = {
+  userId: string;
+  eventId: string;
+  currentQuestion: number;
+  score: number;
+  flags: number;
+  joinedAt: string;
+};
+
 export type CreateEventInput = {
   name: string;
   timeLimit: number;
+  password?: string;
+};
+
+export type JoinEventInput = {
   password?: string;
 };
 
@@ -63,6 +76,38 @@ export async function createEvent(token: string, input: CreateEventInput): Promi
   }
 
   return (await response.json()) as EventSummary;
+}
+
+export async function joinEvent(
+  token: string,
+  eventId: string,
+  input: JoinEventInput,
+): Promise<ParticipantRecord> {
+  const response = await fetch(`${API_URL}/events/${eventId}/join`, {
+    method: "POST",
+    headers: jsonHeaders(token),
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to join event");
+  }
+
+  return (await response.json()) as ParticipantRecord;
+}
+
+export async function listParticipants(token: string, eventId: string): Promise<ParticipantRecord[]> {
+  const response = await fetch(`${API_URL}/events/${eventId}/participants`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to load participants");
+  }
+
+  return (await response.json()) as ParticipantRecord[];
 }
 
 async function updateLifecycle(token: string, eventId: string, action: "start" | "pause" | "end") {

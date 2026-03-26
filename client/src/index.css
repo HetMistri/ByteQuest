@@ -201,6 +201,35 @@
         gap: 4px;
     }
 
+    .join-panel,
+    .room-panel {
+        border: 2px solid var(--accent-border);
+        padding: 10px;
+        margin-top: 10px;
+        display: grid;
+        gap: 8px;
+        background: color-mix(in oklab, var(--panel-background) 82%, black 18%);
+    }
+
+    .join-panel label {
+        color: var(--accent-xyz);
+        font-size: 0.7rem;
+    }
+
+    .join-panel input {
+        width: 100%;
+        border: 2px solid var(--accent-border);
+        background: #111216;
+        color: var(--accent-xyz);
+        padding: 10px;
+        outline: none;
+        font-size: 0.75rem;
+    }
+
+    .room-text {
+        padding: 0;
+    }
+
     .lifecycle-actions {
         display: flex;
         flex-wrap: wrap;

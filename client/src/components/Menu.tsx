@@ -3,6 +3,8 @@ import {
   createEvent,
   endEvent,
   getEventDetails,
+  joinEvent,
+  listParticipants,
   listScheduledEvents,
   pauseEvent,
   startEvent,
@@ -13,20 +15,53 @@ type MenuProps = {
   displayName: string;
   role: string;
   accessToken: string;
+  userId: string;
 };
 
-export default function Menu({ displayName, role, accessToken }: MenuProps) {
+export default function Menu({ displayName, role, accessToken, userId }: MenuProps) {
   const [view, setView] = useState<"menu" | "play">("menu");
   const [events, setEvents] = useState<EventSummary[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventSummary | null>(null);
+  const [joinedEventId, setJoinedEventId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [eventName, setEventName] = useState("");
   const [timeLimit, setTimeLimit] = useState("60");
   const [password, setPassword] = useState("");
+  const [joinPassword, setJoinPassword] = useState("");
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
 
   const isCoordinator = role === "coordinator";
+  const isParticipant = !isCoordinator;
+  const isJoinedSelectedEvent = Boolean(selectedEvent && joinedEventId === selectedEvent.id);
+
+  const eventHasExpired = useMemo(() => {
+    if (!selectedEvent?.startedAt) {
+      return false;
+    }
+
+    const endMs =
+      new Date(selectedEvent.startedAt).getTime() + selectedEvent.timeLimit * 60 * 1000;
+
+    return Date.now() >= endMs;
+  }, [selectedEvent]);
+
+  const roomStatusText = useMemo(() => {
+    if (!selectedEvent || !isJoinedSelectedEvent) {
+      return null;
+    }
+
+    if (eventHasExpired) {
+      return "Event room expired";
+    }
+
+    if (selectedEvent.status === "running") {
+      return "Event has started";
+    }
+
+    return "Waiting for admin to start the event";
+  }, [selectedEvent, isJoinedSelectedEvent, eventHasExpired]);
 
   const canControlSelected = useMemo(
     () => Boolean(selectedEvent && isCoordinator && selectedEvent.createdBy),
@@ -66,13 +101,91 @@ export default function Menu({ displayName, role, accessToken }: MenuProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, view]);
 
+  useEffect(() => {
+    if (!selectedEvent || !isJoinedSelectedEvent || !selectedEvent.startedAt) {
+      setRemainingSeconds(null);
+      return;
+    }
+
+    const updateRemaining = () => {
+      const endMs =
+        new Date(selectedEvent.startedAt as string).getTime() +
+        selectedEvent.timeLimit * 60 * 1000;
+      const next = Math.max(0, Math.floor((endMs - Date.now()) / 1000));
+      setRemainingSeconds(next);
+    };
+
+    updateRemaining();
+    const interval = window.setInterval(updateRemaining, 1000);
+    return () => window.clearInterval(interval);
+  }, [selectedEvent, isJoinedSelectedEvent]);
+
+  useEffect(() => {
+    if (!selectedEvent || !isJoinedSelectedEvent) {
+      return;
+    }
+
+    const refreshSelected = async () => {
+      try {
+        const details = await getEventDetails(accessToken, selectedEvent.id);
+        setSelectedEvent(details);
+      } catch {
+        // Keep last known state if transient fetch fails.
+      }
+    };
+
+    const interval = window.setInterval(refreshSelected, 8000);
+    return () => window.clearInterval(interval);
+  }, [accessToken, isJoinedSelectedEvent, selectedEvent]);
+
+  const formatRemaining = (totalSeconds: number | null): string => {
+    if (totalSeconds === null) {
+      return "--:--";
+    }
+
+    const minutes = Math.floor(totalSeconds / 60)
+      .toString()
+      .padStart(2, "0");
+    const seconds = (totalSeconds % 60).toString().padStart(2, "0");
+    return `${minutes}:${seconds}`;
+  };
+
   const handleSelectEvent = async (eventId: string) => {
     setError(null);
     try {
       const details = await getEventDetails(accessToken, eventId);
       setSelectedEvent(details);
+
+      if (isParticipant) {
+        const participants = await listParticipants(accessToken, eventId);
+        const joined = participants.some((participant) => participant.userId === userId);
+        setJoinedEventId(joined ? eventId : null);
+      }
     } catch {
       setError("Could not load this event.");
+    }
+  };
+
+  const handleJoinEvent = async () => {
+    if (!selectedEvent || !isParticipant) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      await joinEvent(accessToken, selectedEvent.id, {
+        password: joinPassword.trim() || undefined,
+      });
+      setJoinedEventId(selectedEvent.id);
+      setJoinPassword("");
+      const details = await getEventDetails(accessToken, selectedEvent.id);
+      setSelectedEvent(details);
+    } catch {
+      setError("Join failed. Check password or event status.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -204,6 +317,38 @@ export default function Menu({ displayName, role, accessToken }: MenuProps) {
                   <p className="status-text">Created At: {new Date(selectedEvent.createdAt).toLocaleString()}</p>
                   {selectedEvent.startedAt ? (
                     <p className="status-text">Started At: {new Date(selectedEvent.startedAt).toLocaleString()}</p>
+                  ) : null}
+
+                  {isParticipant && !isJoinedSelectedEvent ? (
+                    <div className="join-panel">
+                      <label htmlFor="joinPassword">Password (if required)</label>
+                      <input
+                        id="joinPassword"
+                        type="text"
+                        value={joinPassword}
+                        onChange={(event) => setJoinPassword(event.target.value)}
+                        placeholder="Enter event password"
+                      />
+                      <button
+                        type="button"
+                        className="primary-button"
+                        onClick={handleJoinEvent}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? "Joining..." : "Join Event"}
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {isParticipant && isJoinedSelectedEvent ? (
+                    <div className="room-panel">
+                      <p className="status-text room-text">{roomStatusText}</p>
+                      {!eventHasExpired ? (
+                        <p className="status-text room-text">
+                          Time Remaining: {formatRemaining(remainingSeconds)}
+                        </p>
+                      ) : null}
+                    </div>
                   ) : null}
 
                   {canControlSelected ? (

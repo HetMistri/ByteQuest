@@ -117,6 +117,7 @@ export default function App() {
                     }
                     role={role ?? "participant"}
                     accessToken={session.access_token}
+                    userId={session.user.id}
                   />
                 ) : (
                   <Navigate to="/auth" replace />
