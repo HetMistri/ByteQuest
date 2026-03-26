@@ -23,7 +23,7 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid or expired token');
     }
 
-    const dbUser = await this.usersService.findById(payload.sub);
+    const dbUser = await this.usersService.findById(payload.sub, payload.displayName);
 
     if (!dbUser) {
       throw new UnauthorizedException('User role could not be resolved');
@@ -33,6 +33,7 @@ export class AuthGuard implements CanActivate {
       id: payload.sub,
       sub: payload.sub,
       email: payload.email,
+      displayName: dbUser.displayName ?? payload.displayName,
       role: dbUser.role,
     };
 

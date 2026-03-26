@@ -45,6 +45,7 @@ export const register = async ({ displayName, phone, email, password }: Register
       body: JSON.stringify({
         userId: data.user?.id,
         email,
+        displayName,
       }),
     });
   } catch {

@@ -30,10 +30,11 @@ export class UsersController {
       },
     },
   })
-  me(@Auth() user: AuthUser): { id: string; email: string | null; role: string } {
+  me(@Auth() user: AuthUser): { id: string; email: string | null; displayName: string | null; role: string } {
     return {
       id: user.sub,
       email: user.email ?? null,
+      displayName: user.displayName ?? null,
       role: user.role,
     };
   }
@@ -55,7 +56,7 @@ export class UsersController {
     description: 'Invalid registration payload',
   })
   async register(@Body() dto: RegisterUserDto): Promise<UserResponseDto> {
-    return this.usersService.register(dto.userId, dto.email);
+    return this.usersService.register(dto.userId, dto.email, dto.displayName);
   }
 
   @Get('resolve-identifier')

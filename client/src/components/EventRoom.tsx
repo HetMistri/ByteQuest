@@ -221,7 +221,9 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
                 <ul className="menu-list">
                   {participants.map((participant) => (
                     <li key={`${participant.eventId}-${participant.userId}`} className="menu-item participant-item">
-                      <span>{participant.userId.slice(0, 8)}... | Score: {participant.score}</span>
+                      <span>
+                        {participant.displayName?.trim() || `${participant.userId.slice(0, 8)}...`} | Score: {participant.score}
+                      </span>
                       <button
                         type="button"
                         className="secondary-button small"

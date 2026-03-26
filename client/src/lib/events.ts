@@ -14,6 +14,7 @@ export type EventSummary = {
 
 export type ParticipantRecord = {
   userId: string;
+  displayName?: string | null;
   eventId: string;
   currentQuestion: number;
   score: number;

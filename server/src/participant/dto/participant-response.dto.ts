@@ -4,6 +4,9 @@ export class ParticipantResponseDto {
   @ApiProperty()
   userId: string;
 
+  @ApiProperty({ required: false, nullable: true })
+  displayName?: string | null;
+
   @ApiProperty()
   eventId: string;
 

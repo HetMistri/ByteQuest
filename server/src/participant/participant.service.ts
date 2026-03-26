@@ -34,6 +34,11 @@ export class ParticipantService {
       },
       select: {
         userId: true,
+        user: {
+          select: {
+            displayName: true,
+          },
+        },
         eventId: true,
         currentQuestion: true,
         score: true,
@@ -47,7 +52,15 @@ export class ParticipantService {
         throw new BadRequestException('Event is ended and cannot be rejoined');
       }
 
-      return existingParticipant;
+      return {
+        userId: existingParticipant.userId,
+        displayName: existingParticipant.user?.displayName ?? null,
+        eventId: existingParticipant.eventId,
+        currentQuestion: existingParticipant.currentQuestion,
+        score: existingParticipant.score,
+        flags: existingParticipant.flags,
+        joinedAt: existingParticipant.joinedAt,
+      };
     }
 
     if (role === 'coordinator') {
@@ -86,13 +99,18 @@ export class ParticipantService {
       }
     }
 
-    return this.prisma.participant.create({
+    const createdParticipant = await this.prisma.participant.create({
       data: {
         userId,
         eventId,
       },
       select: {
         userId: true,
+        user: {
+          select: {
+            displayName: true,
+          },
+        },
         eventId: true,
         currentQuestion: true,
         score: true,
@@ -100,6 +118,16 @@ export class ParticipantService {
         joinedAt: true,
       },
     });
+
+    return {
+      userId: createdParticipant.userId,
+      displayName: createdParticipant.user?.displayName ?? null,
+      eventId: createdParticipant.eventId,
+      currentQuestion: createdParticipant.currentQuestion,
+      score: createdParticipant.score,
+      flags: createdParticipant.flags,
+      joinedAt: createdParticipant.joinedAt,
+    };
   }
 
   async listParticipants(eventId: string) {
@@ -112,11 +140,16 @@ export class ParticipantService {
       throw new NotFoundException('Event not found');
     }
 
-    return this.prisma.participant.findMany({
+    const participants = await this.prisma.participant.findMany({
       where: { eventId },
       orderBy: [{ score: 'desc' }, { joinedAt: 'asc' }],
       select: {
         userId: true,
+        user: {
+          select: {
+            displayName: true,
+          },
+        },
         eventId: true,
         currentQuestion: true,
         score: true,
@@ -124,6 +157,16 @@ export class ParticipantService {
         joinedAt: true,
       },
     });
+
+    return participants.map((participant) => ({
+      userId: participant.userId,
+      displayName: participant.user?.displayName ?? null,
+      eventId: participant.eventId,
+      currentQuestion: participant.currentQuestion,
+      score: participant.score,
+      flags: participant.flags,
+      joinedAt: participant.joinedAt,
+    }));
   }
 
   async kickParticipant(requesterId: string, eventId: string, targetUserId: string) {

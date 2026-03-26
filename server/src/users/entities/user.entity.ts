@@ -5,6 +5,9 @@ export class User {
   @PrimaryColumn('uuid')
   id: string;
 
+  @Column('varchar', { name: 'display_name', length: 64, nullable: true })
+  displayName: string | null;
+
   @Column('varchar', { length: 32, default: 'participant' })
   role: string;
 

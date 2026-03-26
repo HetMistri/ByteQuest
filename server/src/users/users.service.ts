@@ -13,12 +13,20 @@ export class UsersService {
     private readonly supabaseService: SupabaseService,
   ) {}
 
-  async register(userId?: string, email?: string): Promise<UserResponseDto> {
+  async register(userId?: string, email?: string, displayName?: string): Promise<UserResponseDto> {
     let resolvedUserId = userId?.trim();
+    let resolvedDisplayName = displayName?.trim() || undefined;
 
     if (!resolvedUserId && email?.trim()) {
       const supabaseUser = await this.supabaseService.getUserByEmail(email);
       resolvedUserId = supabaseUser?.id;
+      if (!resolvedDisplayName) {
+        resolvedDisplayName =
+          (supabaseUser?.user_metadata?.display_name as string | undefined)?.trim() ||
+          (supabaseUser?.user_metadata?.name as string | undefined)?.trim() ||
+          (supabaseUser?.user_metadata?.full_name as string | undefined)?.trim() ||
+          undefined;
+      }
     }
 
     if (!resolvedUserId) {
@@ -31,14 +39,19 @@ export class UsersService {
       user = this.usersRepository.create({
         id: resolvedUserId,
         role: 'participant',
+        displayName: resolvedDisplayName ?? null,
       });
 
+      user = await this.usersRepository.save(user);
+    } else if (resolvedDisplayName && user.displayName !== resolvedDisplayName) {
+      user.displayName = resolvedDisplayName;
       user = await this.usersRepository.save(user);
     }
 
     return {
       id: user.id,
       role: user.role,
+      displayName: user.displayName,
       created_at: user.created_at,
     };
   }
@@ -55,16 +68,23 @@ export class UsersService {
     };
   }
 
-  async findById(id: string): Promise<User | null> {
+  async findById(id: string, displayName?: string): Promise<User | null> {
+    const normalizedDisplayName = displayName?.trim() || undefined;
     const user = await this.usersRepository.findOne({ where: { id } });
 
     if (user) {
+      if (normalizedDisplayName && user.displayName !== normalizedDisplayName) {
+        user.displayName = normalizedDisplayName;
+        return this.usersRepository.save(user);
+      }
+
       return user;
     }
 
     const created = this.usersRepository.create({
       id,
       role: 'participant',
+      displayName: normalizedDisplayName ?? null,
     });
 
     return this.usersRepository.save(created);

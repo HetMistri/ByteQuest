@@ -13,6 +13,13 @@ export class RegisterUserDto {
     format: 'email',
   })
   email?: string;
+
+  @ApiProperty({
+    description: 'Preferred display name',
+    example: 'ByteMaster77',
+    required: false,
+  })
+  displayName?: string;
 }
 
 export class ResolveIdentifierDto {
@@ -35,6 +42,14 @@ export class UserResponseDto {
     example: 'participant',
   })
   role: string;
+
+  @ApiProperty({
+    description: 'Display name for UI presentation',
+    example: 'ByteMaster77',
+    nullable: true,
+    required: false,
+  })
+  displayName?: string | null;
 
   @ApiProperty({
     description: 'Account creation timestamp',

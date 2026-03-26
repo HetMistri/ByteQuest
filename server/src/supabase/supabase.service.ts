@@ -106,7 +106,7 @@ export class SupabaseService {
     }
   }
 
-  async verifyToken(token: string): Promise<{ sub: string; email?: string } | null> {
+  async verifyToken(token: string): Promise<{ sub: string; email?: string; displayName?: string } | null> {
     if (!this.authClient) {
       if (!this.hasWarnedMissingTokenVerifyConfig) {
         this.logger.warn('Cannot verify token: SUPABASE_URL or SUPABASE_ANON_KEY not set');
@@ -125,6 +125,10 @@ export class SupabaseService {
       return {
         sub: data.user.id,
         email: data.user.email,
+        displayName:
+          (data.user.user_metadata?.display_name as string | undefined) ||
+          (data.user.user_metadata?.name as string | undefined) ||
+          (data.user.user_metadata?.full_name as string | undefined),
       };
     } catch (error) {
       this.logger.error(`Token verification failed: ${error}`);
