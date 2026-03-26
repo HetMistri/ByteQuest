@@ -7,5 +7,6 @@
             "database": "${workspaceFolder:ByteQuest}/server/data/bytequest.db"
         }
     ],
-    "sqltools.useNodeRuntime": true
+    "sqltools.useNodeRuntime": true,
+    "prisma.pinToPrisma6": true
 }
