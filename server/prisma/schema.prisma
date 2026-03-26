@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:../data/bytequest.db"
+}
+
+enum EventStatus {
+  scheduled
+  running
+  paused
+  ended
+}
+
+model User {
+  id        String   @id
+  role      String   @default("participant")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  events       Event[]
+  participants Participant[]
+  submissions  Submission[]
+
+  @@map("users")
+}
+
+model Event {
+  id        String      @id @default(uuid())
+  name      String
+  status    EventStatus @default(scheduled)
+  timeLimit Int
+  passwordHash String?
+  createdBy String
+  startedAt DateTime?
+  createdAt DateTime @default(now())
+
+  creator      User          @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  problems     Problem[]
+  participants Participant[]
+  submissions  Submission[]
+
+  @@index([status])
+  @@map("events")
+}
+
+model Problem {
+  id            String   @id @default(uuid())
+  eventId       String
+  title         String
+  description   String
+  correctAnswer String
+  resourceFile  String?
+  orderIndex    Int
+  createdAt     DateTime @default(now())
+
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@unique([eventId, orderIndex])
+  @@index([eventId])
+  @@map("problems")
+}
+
+model Participant {
+  id              String   @id @default(uuid())
+  userId          String
+  eventId         String
+  currentQuestion Int      @default(1)
+  score           Int      @default(0)
+  flags           Int      @default(0)
+  joinedAt        DateTime @default(now())
+  lastSolvedAt    DateTime?
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+  @@index([eventId])
+  @@index([eventId, score])
+  @@map("participants")
+}
+
+model Submission {
+  id              String   @id @default(uuid())
+  userId          String
+  eventId         String
+  problemId       String
+  submittedAnswer String
+  isCorrect       Boolean
+  isFirstCorrect  Boolean  @default(false)
+  submittedAt     DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, userId])
+  @@index([problemId])
+  @@index([userId, problemId])
+  @@map("submissions")
+}

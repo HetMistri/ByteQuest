@@ -6,6 +6,8 @@ import { SupabaseModule } from './supabase/supabase.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { User } from './users/entities/user.entity';
+import { PrismaModule } from './prisma/prisma.module';
+import { EventModule } from './event/event.module';
 
 @Module({
   imports: [
@@ -17,8 +19,10 @@ import { User } from './users/entities/user.entity';
       logging: true,
     }),
     SupabaseModule,
+    PrismaModule,
     AuthModule,
     UsersModule,
+    EventModule,
   ],
   controllers: [AppController],
   providers: [AppService],
