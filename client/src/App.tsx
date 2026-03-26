@@ -6,11 +6,11 @@ import { getCurrentUserRole, getSession, logout } from "./lib/auth";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
 import Auth from "./auth/Auth";
-import Menu from "./components/Menu";
-import Profile from "./components/Profile";
-import EventsPage from "./components/Event/EventsPage";
-import EventWaitingRoom from "./components/Event/EventWaitingRoom";
-import EventRoom from "./components/Event/EventRoom";
+import Menu from "./screens/Menu";
+import Profile from "./screens/Profile";
+import EventsPage from "./screens/Event/EventsPage";
+import EventWaitingRoom from "./screens/Event/EventWaitingRoom";
+import EventRoom from "./screens/Event/EventRoom";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
