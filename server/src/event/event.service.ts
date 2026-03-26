@@ -11,6 +11,8 @@ export type EventStatus = 'scheduled' | 'running' | 'paused' | 'ended';
 
 @Injectable()
 export class EventService {
+  private static readonly MIN_PROBLEMS_TO_START = 5;
+
   constructor(private readonly prisma: PrismaService) {}
 
   static assertCoordinatorJoinAllowed(status: EventStatus) {
@@ -34,6 +36,14 @@ export class EventService {
   static assertSubmissionAllowed(status: EventStatus) {
     if (status !== 'running') {
       throw new BadRequestException('Submissions are allowed only while event is running');
+    }
+  }
+
+  static assertCanStartWithProblemCount(problemCount: number) {
+    if (problemCount < EventService.MIN_PROBLEMS_TO_START) {
+      throw new BadRequestException(
+        `Event must contain at least ${EventService.MIN_PROBLEMS_TO_START} problems before starting`,
+      );
     }
   }
 
@@ -244,9 +254,7 @@ export class EventService {
 
     if (targetStatus === 'running' && event.status === 'scheduled') {
       const problemCount = await this.prisma.problem.count({ where: { eventId } });
-      if (problemCount === 0) {
-        throw new BadRequestException('Add at least one problem before starting the event');
-      }
+      EventService.assertCanStartWithProblemCount(problemCount);
 
       await this.prisma.participant.updateMany({
         where: { eventId },

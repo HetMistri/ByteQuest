@@ -38,6 +38,7 @@ const formatDuration = (totalSeconds: number): string => {
 };
 
 export default function EventRoom({ accessToken, role, userId }: EventRoomProps) {
+  const MIN_PROBLEMS_TO_START = 5;
   const [event, setEvent] = useState<EventDetails | null>(null);
   const [lastSyncAtMs, setLastSyncAtMs] = useState<number | null>(null);
   const [tickNowMs, setTickNowMs] = useState<number>(Date.now());
@@ -130,6 +131,11 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
 
   const handleLifecycle = async (action: "start" | "pause" | "end") => {
     if (!event || !isCoordinator) {
+      return;
+    }
+
+    if (action === "start" && (event.totalProblems ?? 0) < MIN_PROBLEMS_TO_START) {
+      setError(`Add at least ${MIN_PROBLEMS_TO_START} problems before starting this event.`);
       return;
     }
 
@@ -471,6 +477,7 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
           <CoordinatorEventControls
             eventId={event.id}
             eventStatus={event.status}
+            totalProblems={event.totalProblems ?? 0}
             isSubmitting={isSubmitting}
             onLifecycle={handleLifecycle}
           />

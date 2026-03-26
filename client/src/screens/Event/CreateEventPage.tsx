@@ -15,6 +15,7 @@ type CreateEventPageProps = {
 };
 
 const PROBLEM_BUCKET = import.meta.env.VITE_SUPABASE_PROBLEM_BUCKET || "problem-assets";
+const MIN_PROBLEMS_TO_START = 5;
 
 type ProblemDraft = {
   title: string;
@@ -279,7 +280,16 @@ export default function CreateEventPage({ accessToken }: CreateEventPageProps) {
                 ))}
               </ul>
 
-              <button type="button" className="secondary-button" onClick={() => navigate("/events")}>
+              <p className="status-text">
+                Minimum required to start: {MIN_PROBLEMS_TO_START} problems ({problems.length} currently added).
+              </p>
+
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => navigate("/events")}
+                disabled={problems.length < MIN_PROBLEMS_TO_START}
+              >
                 Done - Go to Events and Join/Start
               </button>
             </>
