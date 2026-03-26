@@ -8,6 +8,8 @@ import { UsersModule } from './users/users.module';
 import { User } from './users/entities/user.entity';
 import { PrismaModule } from './prisma/prisma.module';
 import { EventModule } from './event/event.module';
+import { ProblemModule } from './problem/problem.module';
+import { SubmissionModule } from './submission/submission.module';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { EventModule } from './event/event.module';
     AuthModule,
     UsersModule,
     EventModule,
+    ProblemModule,
+    SubmissionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

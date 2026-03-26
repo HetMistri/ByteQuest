@@ -130,18 +130,26 @@ export class ParticipantService {
     };
   }
 
-  async listParticipants(eventId: string) {
+  async listParticipants(eventId: string, requesterId: string, role: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
-      select: { id: true },
+      select: { id: true, status: true },
     });
 
     if (!event) {
       throw new NotFoundException('Event not found');
     }
 
+    const participantFilter =
+      role === 'coordinator' || event.status === 'ended'
+        ? { eventId }
+        : {
+            eventId,
+            userId: requesterId,
+          };
+
     const participants = await this.prisma.participant.findMany({
-      where: { eventId },
+      where: participantFilter,
       orderBy: [{ score: 'desc' }, { joinedAt: 'asc' }],
       select: {
         userId: true,
