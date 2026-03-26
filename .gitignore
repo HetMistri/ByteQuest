@@ -1,0 +1,12 @@
+.vscode/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# Project data directory database artifacts
+server/data/*.db
+server/data/*.db-shm
+server/data/*.db-wal
