@@ -97,9 +97,9 @@
         gap: 12px;
     }
 
-/* UPDATE ONCE ADDED ACTUAL LOGO */
- 
-.header-logo {
+    /* UPDATE ONCE ADDED ACTUAL LOGO */
+
+    .header-logo {
         width: 0em;
         height: 0em;
     }
@@ -229,6 +229,41 @@
 
     .room-text {
         padding: 0;
+    }
+
+    .progress-wrap {
+        border: 2px solid var(--accent-border);
+        padding: 10px;
+        margin-top: 8px;
+        display: grid;
+        gap: 8px;
+    }
+
+    .progress-meta {
+        display: flex;
+        justify-content: space-between;
+        color: var(--accent-xyz);
+        font-size: 0.7rem;
+    }
+
+    .progress-track {
+        width: 100%;
+        border: 2px solid var(--accent-border);
+        height: 14px;
+        background: #111216;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: var(--accent-xyz);
+        transition: width 0.25s ease;
+    }
+
+    .inline-link-button {
+        display: inline-block;
+        text-decoration: none;
+        width: fit-content;
     }
 
     .lifecycle-actions {

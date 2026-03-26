@@ -1,16 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabase";
 import {
+  addProblem,
   endEvent,
   getEventDetails,
   kickParticipant,
   listParticipants,
   pauseEvent,
   startEvent,
-  type EventSummary,
+  submitAnswer,
+  type EventDetails,
   type ParticipantRecord,
+  type SubmissionResult,
 } from "../../lib/events";
 import { clearActiveEventId, getActiveEventId } from "../../lib/event-session";
+import EventProgressCard from "./components/EventProgressCard";
+import ProblemWorkspace from "./components/ProblemWorkspace";
+import CoordinatorEventControls from "./components/CoordinatorEventControls";
+import LeaderboardPanel from "./components/LeaderboardPanel";
 
 type EventRoomProps = {
   accessToken: string;
@@ -18,93 +26,96 @@ type EventRoomProps = {
   userId: string;
 };
 
+const PROBLEM_BUCKET = import.meta.env.VITE_SUPABASE_PROBLEM_BUCKET || "problem-assets";
+
 export default function EventRoom({ accessToken, role, userId }: EventRoomProps) {
-  const [event, setEvent] = useState<EventSummary | null>(null);
+  const [event, setEvent] = useState<EventDetails | null>(null);
   const [participants, setParticipants] = useState<ParticipantRecord[]>([]);
-  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const [answer, setAnswer] = useState("");
+  const [submissionResult, setSubmissionResult] = useState<SubmissionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
   const isCoordinator = role === "coordinator";
+  const activeEventId = getActiveEventId();
 
-  const eventExpired = useMemo(() => {
-    if (!event?.startedAt) {
-      return false;
-    }
-
-    const endMs = new Date(event.startedAt).getTime() + event.timeLimit * 60 * 1000;
-    return Date.now() >= endMs;
-  }, [event]);
-
-  useEffect(() => {
-    const activeEventId = getActiveEventId();
+  const loadRoom = useCallback(async () => {
     if (!activeEventId) {
       navigate("/events", { replace: true });
       return;
     }
 
-    const loadRoom = async () => {
-      try {
-        const details = await getEventDetails(accessToken, activeEventId);
-        setEvent(details);
+    try {
+      const details = await getEventDetails(accessToken, activeEventId);
+      setEvent(details);
 
-        const joinedParticipants = await listParticipants(accessToken, activeEventId);
-        setParticipants(joinedParticipants);
+      const joinedParticipants = await listParticipants(accessToken, activeEventId);
+      setParticipants(joinedParticipants);
 
-        if (!isCoordinator) {
-          const isStillJoined = joinedParticipants.some((participant) => participant.userId === userId);
-          if (!isStillJoined) {
-            clearActiveEventId();
-            navigate("/events?kicked=1", { replace: true });
-            return;
-          }
+      if (!isCoordinator) {
+        const isStillJoined = joinedParticipants.some((participant) => participant.userId === userId);
+        if (!isStillJoined) {
+          clearActiveEventId();
+          navigate("/events?kicked=1", { replace: true });
+          return;
         }
 
-        if (!isCoordinator && details.status !== "running") {
+        if (details.status !== "running") {
           navigate("/event/waiting", { replace: true });
         }
-      } catch {
-        setError("Could not load event room.");
       }
-    };
+    } catch {
+      setError("Could not load event room.");
+    }
+  }, [accessToken, activeEventId, isCoordinator, navigate, userId]);
 
+  useEffect(() => {
     loadRoom();
     const interval = window.setInterval(loadRoom, 8000);
     return () => window.clearInterval(interval);
-  }, [accessToken, isCoordinator, navigate, userId]);
+  }, [loadRoom]);
 
   useEffect(() => {
     if (!event?.startedAt) {
-      setRemainingSeconds(null);
       return;
     }
 
-    const updateRemaining = () => {
-      const endMs = new Date(event.startedAt as string).getTime() + event.timeLimit * 60 * 1000;
-      const next = Math.max(0, Math.floor((endMs - Date.now()) / 1000));
-      setRemainingSeconds(next);
+    const updateOnTick = () => {
+      const startedAt = event.startedAt;
+      if (!startedAt) {
+        return;
+      }
 
-      if (next === 0) {
+      const endMs = new Date(startedAt).getTime() + event.timeLimit * 60 * 1000;
+      if (Date.now() >= endMs) {
         clearActiveEventId();
       }
     };
 
-    updateRemaining();
-    const interval = window.setInterval(updateRemaining, 1000);
+    const interval = window.setInterval(updateOnTick, 1000);
     return () => window.clearInterval(interval);
   }, [event]);
 
-  const formatRemaining = (totalSeconds: number | null): string => {
-    if (totalSeconds === null) {
-      return "--:--";
+  const uploadProblemFile = async (eventId: string, file: File | null): Promise<string | undefined> => {
+    if (!file) {
+      return undefined;
     }
 
-    const minutes = Math.floor(totalSeconds / 60)
-      .toString()
-      .padStart(2, "0");
-    const seconds = (totalSeconds % 60).toString().padStart(2, "0");
-    return `${minutes}:${seconds}`;
+    const normalizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+    const filePath = `${eventId}/${Date.now()}-${normalizedFileName}`;
+
+    const uploadResult = await supabase.storage.from(PROBLEM_BUCKET).upload(filePath, file, {
+      upsert: false,
+      contentType: file.type || undefined,
+    });
+
+    if (uploadResult.error) {
+      throw new Error(uploadResult.error.message);
+    }
+
+    const { data } = supabase.storage.from(PROBLEM_BUCKET).getPublicUrl(filePath);
+    return data.publicUrl;
   };
 
   const handleLifecycle = async (action: "start" | "pause" | "end") => {
@@ -116,23 +127,72 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
     setError(null);
 
     try {
-      const updated =
-        action === "start"
-          ? await startEvent(accessToken, event.id)
-          : action === "pause"
-            ? await pauseEvent(accessToken, event.id)
-            : await endEvent(accessToken, event.id);
-
-      setEvent(updated);
-
+      if (action === "start") {
+        await startEvent(accessToken, event.id);
+      }
+      if (action === "pause") {
+        await pauseEvent(accessToken, event.id);
+      }
       if (action === "end") {
+        await endEvent(accessToken, event.id);
         clearActiveEventId();
         navigate("/events", { replace: true });
-      } else if (action === "pause") {
-        navigate("/event/waiting", { replace: true });
       }
+
+      await loadRoom();
     } catch {
       setError(`Could not ${action} event.`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAddProblem = async (input: {
+    title: string;
+    description: string;
+    solution: string;
+    file: File | null;
+  }) => {
+    if (!event || !isCoordinator) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const downloadableContentUrl = await uploadProblemFile(event.id, input.file);
+      await addProblem(accessToken, event.id, {
+        title: input.title,
+        description: input.description,
+        solution: input.solution,
+        downloadableContentUrl,
+      });
+      await loadRoom();
+    } catch {
+      setError("Could not add problem. Check bucket permissions and payload.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitAnswer = async (submitEvent: React.FormEvent<HTMLFormElement>) => {
+    submitEvent.preventDefault();
+
+    if (!event || !event.currentProblem || isCoordinator) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const result = await submitAnswer(accessToken, event.id, answer);
+      setSubmissionResult(result);
+      setAnswer("");
+      await loadRoom();
+    } catch {
+      setError("Could not submit answer.");
     } finally {
       setIsSubmitting(false);
     }
@@ -148,8 +208,7 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
 
     try {
       await kickParticipant(accessToken, event.id, targetUserId);
-      const joinedParticipants = await listParticipants(accessToken, event.id);
-      setParticipants(joinedParticipants);
+      await loadRoom();
     } catch {
       setError("Could not kick participant.");
     } finally {
@@ -157,8 +216,20 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
     }
   };
 
+  const eventExpired = useMemo(() => {
+    if (!event?.startedAt) {
+      return false;
+    }
+
+    return Date.now() >= new Date(event.startedAt).getTime() + event.timeLimit * 60 * 1000;
+  }, [event]);
+
   if (error) {
     return <p className="error-text">{error}</p>;
+  }
+
+  if (!event) {
+    return <p className="status-text">Loading event room...</p>;
   }
 
   return (
@@ -166,82 +237,51 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
       <h2 className="section-title">Event Room</h2>
       <div className="section-divider" />
 
-      {event ? (
-        <>
-          <div className="room-panel">
-            <p className="status-text room-text">Event: {event.name}</p>
-            <p className="status-text room-text">Event has started</p>
-            {!eventExpired ? (
-              <p className="status-text room-text">Time Remaining: {formatRemaining(remainingSeconds)}</p>
-            ) : (
-              <p className="status-text room-text">Event expired</p>
-            )}
-            {eventExpired ? (
-              <button type="button" className="secondary-button" onClick={() => navigate("/events", { replace: true })}>
-                Back to Events
-              </button>
-            ) : null}
-          </div>
+      <EventProgressCard
+        eventName={event.name}
+        status={event.status}
+        currentQuestionIndex={event.currentQuestionIndex ?? 1}
+        totalProblems={event.totalProblems ?? 0}
+        totalElapsedSeconds={event.totalElapsedSeconds ?? 0}
+        totalDurationSeconds={event.totalDurationSeconds ?? event.timeLimit * 60}
+        problemTimeSpentSeconds={event.problemTimeSpentSeconds ?? 0}
+        progressPercent={event.progressPercent ?? 0}
+      />
 
-          {isCoordinator ? (
-            <div className="event-layout">
-              <div className="event-column">
-                <h3 className="section-title mini">Event Options</h3>
-                <div className="lifecycle-actions">
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => handleLifecycle("start")}
-                    disabled={isSubmitting}
-                  >
-                    {event.status === "paused" ? "Resume" : "Start"}
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => handleLifecycle("pause")}
-                    disabled={isSubmitting}
-                  >
-                    Pause
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => handleLifecycle("end")}
-                    disabled={isSubmitting}
-                  >
-                    End
-                  </button>
-                </div>
-              </div>
+      {eventExpired ? (
+        <button type="button" className="secondary-button" onClick={() => navigate("/events", { replace: true })}>
+          Back to Events
+        </button>
+      ) : null}
 
-              <div className="event-column">
-                <h3 className="section-title mini">Joined Participants</h3>
-                {participants.length === 0 ? <p className="status-text">No participants joined yet.</p> : null}
-                <ul className="menu-list">
-                  {participants.map((participant) => (
-                    <li key={`${participant.eventId}-${participant.userId}`} className="menu-item participant-item">
-                      <span>
-                        {participant.displayName?.trim() || `${participant.userId.slice(0, 8)}...`} | Score: {participant.score}
-                      </span>
-                      <button
-                        type="button"
-                        className="secondary-button small"
-                        onClick={() => handleKickParticipant(participant.userId)}
-                        disabled={isSubmitting}
-                      >
-                        Kick
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          ) : null}
-        </>
-      ) : (
-        <p className="status-text">Loading event room...</p>
-      )}
+      <ProblemWorkspace
+        isCoordinator={isCoordinator}
+        event={event}
+        answer={answer}
+        onAnswerChange={setAnswer}
+        onSubmitAnswer={handleSubmitAnswer}
+        submissionResult={submissionResult}
+        isSubmitting={isSubmitting}
+      />
+
+      <div className="event-layout">
+        {isCoordinator ? (
+          <CoordinatorEventControls
+            eventId={event.id}
+            eventStatus={event.status}
+            isSubmitting={isSubmitting}
+            onLifecycle={handleLifecycle}
+            onAddProblem={handleAddProblem}
+          />
+        ) : null}
+
+        <LeaderboardPanel
+          participants={participants}
+          showKick={isCoordinator}
+          isSubmitting={isSubmitting}
+          onKick={handleKickParticipant}
+        />
+      </div>
     </section>
   );
 }
