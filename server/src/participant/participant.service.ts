@@ -11,7 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ParticipantService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async joinEvent(userId: string, eventId: string, password?: string) {
+  async joinEvent(userId: string, role: string, eventId: string, password?: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
       select: {
@@ -25,7 +25,11 @@ export class ParticipantService {
       throw new NotFoundException('Event not found');
     }
 
-    if (event.status !== 'scheduled') {
+    if (role === 'coordinator') {
+      if (event.status !== 'scheduled' && event.status !== 'running') {
+        throw new BadRequestException('Coordinators can only join scheduled or running events');
+      }
+    } else if (event.status !== 'scheduled') {
       throw new BadRequestException('Participants can only join scheduled events');
     }
 
@@ -53,6 +57,27 @@ export class ParticipantService {
 
     if (existingParticipant) {
       throw new ConflictException('Participant already joined this event');
+    }
+
+    if (role !== 'coordinator') {
+      const activeParticipation = await this.prisma.participant.findFirst({
+        where: {
+          userId,
+          eventId: { not: eventId },
+          event: {
+            status: {
+              in: ['scheduled', 'running', 'paused'],
+            },
+          },
+        },
+        select: {
+          eventId: true,
+        },
+      });
+
+      if (activeParticipation) {
+        throw new ConflictException('Participant can join only one active event at a time');
+      }
     }
 
     return this.prisma.participant.create({

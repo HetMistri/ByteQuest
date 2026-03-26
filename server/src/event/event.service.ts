@@ -43,9 +43,12 @@ export class EventService {
     });
   }
 
-  async listScheduledEvents() {
+  async listScheduledEvents(role: string) {
+    const statuses: EventStatus[] =
+      role === 'coordinator' ? ['scheduled', 'running'] : ['scheduled'];
+
     return this.prisma.event.findMany({
-      where: { status: 'scheduled' },
+      where: { status: { in: statuses } },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,

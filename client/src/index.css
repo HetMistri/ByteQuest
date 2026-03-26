@@ -287,6 +287,13 @@
         color: var(--accent-muted);
     }
 
+    .participant-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
     .auth-form {
         max-width: 540px;
         display: flex;
@@ -321,6 +328,11 @@
         cursor: pointer;
         padding: 10px;
         font-size: 0.75rem;
+    }
+
+    .secondary-button.small {
+        padding: 6px 8px;
+        font-size: 0.6rem;
     }
 
     .primary-button:disabled,

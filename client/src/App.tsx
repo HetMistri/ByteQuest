@@ -8,6 +8,9 @@ import Header from "./components/Header";
 import Auth from "./auth/Auth";
 import Menu from "./components/Menu";
 import Profile from "./components/Profile";
+import EventsPage from "./components/EventsPage";
+import EventWaitingRoom from "./components/EventWaitingRoom";
+import EventRoom from "./components/EventRoom";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -116,8 +119,43 @@ export default function App() {
                       (session.user.user_metadata?.display_name as string | undefined) ?? "Player"
                     }
                     role={role ?? "participant"}
+                  />
+                ) : (
+                  <Navigate to="/auth" replace />
+                )
+              }
+            />
+            <Route
+              path="/events"
+              element={
+                isAuthenticated && session ? (
+                  <EventsPage
+                    role={role ?? "participant"}
                     accessToken={session.access_token}
                     userId={session.user.id}
+                  />
+                ) : (
+                  <Navigate to="/auth" replace />
+                )
+              }
+            />
+            <Route
+              path="/event/waiting"
+              element={
+                isAuthenticated && session ? (
+                  <EventWaitingRoom accessToken={session.access_token} />
+                ) : (
+                  <Navigate to="/auth" replace />
+                )
+              }
+            />
+            <Route
+              path="/event"
+              element={
+                isAuthenticated && session ? (
+                  <EventRoom
+                    accessToken={session.access_token}
+                    role={role ?? "participant"}
                   />
                 ) : (
                   <Navigate to="/auth" replace />

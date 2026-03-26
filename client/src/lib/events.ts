@@ -110,6 +110,19 @@ export async function listParticipants(token: string, eventId: string): Promise<
   return (await response.json()) as ParticipantRecord[];
 }
 
+export async function kickParticipant(token: string, eventId: string, userId: string): Promise<void> {
+  const response = await fetch(`${API_URL}/events/${eventId}/kick/${userId}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to kick participant");
+  }
+}
+
 async function updateLifecycle(token: string, eventId: string, action: "start" | "pause" | "end") {
   const response = await fetch(`${API_URL}/events/${eventId}/${action}`, {
     method: "POST",

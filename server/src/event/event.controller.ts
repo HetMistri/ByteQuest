@@ -34,8 +34,8 @@ export class EventController {
   @Get()
   @ApiOperation({ summary: 'List scheduled events' })
   @ApiResponse({ status: 200, type: EventResponseDto, isArray: true })
-  listScheduledEvents() {
-    return this.eventService.listScheduledEvents();
+  listScheduledEvents(@Auth() user: AuthUser) {
+    return this.eventService.listScheduledEvents(user.role);
   }
 
   @Get(':id')
@@ -49,7 +49,7 @@ export class EventController {
   @ApiOperation({ summary: 'Join scheduled event (participant flow)' })
   @ApiResponse({ status: 201, type: ParticipantResponseDto })
   joinEvent(@Param('id') eventId: string, @Auth() user: AuthUser, @Body() dto: JoinEventDto) {
-    return this.participantService.joinEvent(user.sub, eventId, dto.password);
+    return this.participantService.joinEvent(user.sub, user.role, eventId, dto.password);
   }
 
   @Get(':id/participants')
