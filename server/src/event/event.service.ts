@@ -13,6 +13,30 @@ export type EventStatus = 'scheduled' | 'running' | 'paused' | 'ended';
 export class EventService {
   constructor(private readonly prisma: PrismaService) {}
 
+  static assertCoordinatorJoinAllowed(status: EventStatus) {
+    if (status === 'ended') {
+      throw new BadRequestException('Coordinators can only join active events');
+    }
+  }
+
+  static assertParticipantJoinAllowed(status: EventStatus) {
+    if (status !== 'scheduled') {
+      throw new BadRequestException('Participants can only join scheduled events');
+    }
+  }
+
+  static assertRejoinAllowed(status: EventStatus) {
+    if (status === 'ended') {
+      throw new BadRequestException('Event is ended and cannot be rejoined');
+    }
+  }
+
+  static assertSubmissionAllowed(status: EventStatus) {
+    if (status !== 'running') {
+      throw new BadRequestException('Submissions are allowed only while event is running');
+    }
+  }
+
   async createEvent(userId: string, dto: CreateEventDto) {
     const name = dto.name?.trim();
 

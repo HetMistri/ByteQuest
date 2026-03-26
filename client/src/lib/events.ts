@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+import { apiGet, apiPatch, apiPost } from "../api/http";
 
 export type EventStatus = "scheduled" | "running" | "paused" | "ended";
 
@@ -115,208 +115,73 @@ export type PersonalResultsResponse = {
   history: PersonalResultItem[];
 };
 
-const jsonHeaders = (token: string) => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${token}`,
-});
-
-export async function listScheduledEvents(token: string): Promise<EventSummary[]> {
-  const response = await fetch(`${API_URL}/events`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to load scheduled events");
-  }
-
-  return (await response.json()) as EventSummary[];
+export function listScheduledEvents(token: string): Promise<EventSummary[]> {
+  return apiGet<EventSummary[]>("/events", token);
 }
 
-export async function getEventDetails(token: string, eventId: string): Promise<EventDetails> {
-  const response = await fetch(`${API_URL}/events/${eventId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to load event details");
-  }
-
-  return (await response.json()) as EventDetails;
+export function getEventDetails(token: string, eventId: string): Promise<EventDetails> {
+  return apiGet<EventDetails>(`/events/${eventId}`, token);
 }
 
-export async function createEvent(token: string, input: CreateEventInput): Promise<EventSummary> {
-  const response = await fetch(`${API_URL}/events`, {
-    method: "POST",
-    headers: jsonHeaders(token),
-    body: JSON.stringify(input),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to create event");
-  }
-
-  return (await response.json()) as EventSummary;
+export function createEvent(token: string, input: CreateEventInput): Promise<EventSummary> {
+  return apiPost<EventSummary>("/events", input, token);
 }
 
-export async function joinEvent(
+export function joinEvent(
   token: string,
   eventId: string,
   input: JoinEventInput,
 ): Promise<ParticipantRecord> {
-  const response = await fetch(`${API_URL}/events/${eventId}/join`, {
-    method: "POST",
-    headers: jsonHeaders(token),
-    body: JSON.stringify(input),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to join event");
-  }
-
-  return (await response.json()) as ParticipantRecord;
+  return apiPost<ParticipantRecord>(`/events/${eventId}/join`, input, token);
 }
 
-export async function listParticipants(token: string, eventId: string): Promise<ParticipantRecord[]> {
-  const response = await fetch(`${API_URL}/events/${eventId}/participants`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to load participants");
-  }
-
-  return (await response.json()) as ParticipantRecord[];
+export function listParticipants(token: string, eventId: string): Promise<ParticipantRecord[]> {
+  return apiGet<ParticipantRecord[]>(`/events/${eventId}/participants`, token);
 }
 
-export async function getLeaderboard(token: string, eventId: string): Promise<LeaderboardEntry[]> {
-  const response = await fetch(`${API_URL}/events/${eventId}/leaderboard`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to load leaderboard");
-  }
-
-  return (await response.json()) as LeaderboardEntry[];
+export function getLeaderboard(token: string, eventId: string): Promise<LeaderboardEntry[]> {
+  return apiGet<LeaderboardEntry[]>(`/events/${eventId}/leaderboard`, token);
 }
 
-export async function kickParticipant(token: string, eventId: string, userId: string): Promise<void> {
-  const response = await fetch(`${API_URL}/events/${eventId}/kick/${userId}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to kick participant");
-  }
+export function kickParticipant(token: string, eventId: string, userId: string): Promise<void> {
+  return apiPost<void>(`/events/${eventId}/kick/${userId}`, undefined, token);
 }
 
-export async function addProblem(
+export function addProblem(
   token: string,
   eventId: string,
   input: CreateProblemInput,
 ): Promise<ProblemRecord> {
-  const response = await fetch(`${API_URL}/events/${eventId}/problems`, {
-    method: "POST",
-    headers: jsonHeaders(token),
-    body: JSON.stringify(input),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to add problem");
-  }
-
-  return (await response.json()) as ProblemRecord;
+  return apiPost<ProblemRecord>(`/events/${eventId}/problems`, input, token);
 }
 
-export async function listProblems(token: string, eventId: string): Promise<ProblemRecord[]> {
-  const response = await fetch(`${API_URL}/events/${eventId}/problems`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to load problems");
-  }
-
-  return (await response.json()) as ProblemRecord[];
+export function listProblems(token: string, eventId: string): Promise<ProblemRecord[]> {
+  return apiGet<ProblemRecord[]>(`/events/${eventId}/problems`, token);
 }
 
-export async function updateProblem(
+export function updateProblem(
   token: string,
   eventId: string,
   problemId: string,
   input: UpdateProblemInput,
 ): Promise<ProblemRecord> {
-  const response = await fetch(`${API_URL}/events/${eventId}/problems/${problemId}`, {
-    method: "PATCH",
-    headers: jsonHeaders(token),
-    body: JSON.stringify(input),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to update problem");
-  }
-
-  return (await response.json()) as ProblemRecord;
+  return apiPatch<ProblemRecord>(`/events/${eventId}/problems/${problemId}`, input, token);
 }
 
-export async function submitAnswer(
+export function submitAnswer(
   token: string,
   eventId: string,
   answer: string,
 ): Promise<SubmissionResult> {
-  const response = await fetch(`${API_URL}/events/${eventId}/submit`, {
-    method: "POST",
-    headers: jsonHeaders(token),
-    body: JSON.stringify({ answer }),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to submit answer");
-  }
-
-  return (await response.json()) as SubmissionResult;
+  return apiPost<SubmissionResult>(`/events/${eventId}/submit`, { answer }, token);
 }
 
-export async function getPersonalResults(token: string, eventId: string): Promise<PersonalResultsResponse> {
-  const response = await fetch(`${API_URL}/events/${eventId}/results/me`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to load personal results");
-  }
-
-  return (await response.json()) as PersonalResultsResponse;
+export function getPersonalResults(token: string, eventId: string): Promise<PersonalResultsResponse> {
+  return apiGet<PersonalResultsResponse>(`/events/${eventId}/results/me`, token);
 }
 
-async function updateLifecycle(token: string, eventId: string, action: "start" | "pause" | "end") {
-  const response = await fetch(`${API_URL}/events/${eventId}/${action}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to ${action} event`);
-  }
-
-  return (await response.json()) as EventSummary;
+function updateLifecycle(token: string, eventId: string, action: "start" | "pause" | "end") {
+  return apiPost<EventSummary>(`/events/${eventId}/${action}`, undefined, token);
 }
 
 export function startEvent(token: string, eventId: string) {

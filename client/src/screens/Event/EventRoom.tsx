@@ -17,10 +17,10 @@ import {
   updateProblem,
 } from "../../lib/events";
 import { clearActiveEventId, getActiveEventId, setCompletedEventId } from "../../lib/event-session";
-import ProblemWorkspace from "./components/ProblemWorkspace";
-import CoordinatorEventControls from "./components/CoordinatorEventControls";
-import LeaderboardPanel from "./components/LeaderboardPanel";
-import ProblemRoadmap from "./components/ProblemRoadmap";
+import ProblemWorkspace from "../../components/ProblemWorkspace";
+import CoordinatorEventControls from "../../components/CoordinatorEventControls";
+import LeaderboardPanel from "../../components/LeaderboardPanel";
+import ProblemRoadmap from "../../components/ProblemRoadmap";
 
 type EventRoomProps = {
   accessToken: string;

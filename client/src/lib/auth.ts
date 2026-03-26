@@ -1,6 +1,5 @@
+import { apiGet, apiPost } from "../api/http";
 import { supabase } from "./supabase";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 type AuthResult = {
   error: string | null;
@@ -37,16 +36,10 @@ export const register = async ({ displayName, phone, email, password }: Register
   }
 
   try {
-    await fetch(`${API_URL}/users/register`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        userId: data.user?.id,
-        email,
-        displayName,
-      }),
+    await apiPost<unknown>("/users/register", {
+      userId: data.user?.id,
+      email,
+      displayName,
     });
   } catch {
     // Supabase remains source of truth for auth. Backend sync failures are non-blocking.
@@ -115,17 +108,7 @@ export const logout = async () => {
 
 export const getCurrentUserRole = async (accessToken: string): Promise<string | null> => {
   try {
-    const response = await fetch(`${API_URL}/users/me`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const me = (await response.json()) as MeResponse;
+    const me = await apiGet<MeResponse>("/users/me", accessToken);
     return me.role;
   } catch {
     return null;

@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import type { EventDetails, SubmissionResult } from "../../../lib/events";
+import type { EventDetails, SubmissionResult } from "../lib/events";
 
 type ProblemWorkspaceProps = {
   isCoordinator: boolean;

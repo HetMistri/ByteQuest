@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventService } from '../event/event.service';
 
 @Injectable()
 export class ParticipantService {
@@ -48,9 +49,7 @@ export class ParticipantService {
     });
 
     if (existingParticipant) {
-      if (event.status === 'ended') {
-        throw new BadRequestException('Event is ended and cannot be rejoined');
-      }
+      EventService.assertRejoinAllowed(event.status);
 
       return {
         userId: existingParticipant.userId,
@@ -64,11 +63,9 @@ export class ParticipantService {
     }
 
     if (role === 'coordinator') {
-      if (event.status === 'ended') {
-        throw new BadRequestException('Coordinators can only join active events');
-      }
-    } else if (event.status !== 'scheduled') {
-      throw new BadRequestException('Participants can only join scheduled events');
+      EventService.assertCoordinatorJoinAllowed(event.status);
+    } else {
+      EventService.assertParticipantJoinAllowed(event.status);
     }
 
     if (role !== 'coordinator') {

@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventService } from '../event/event.service';
 
 @Injectable()
 export class SubmissionService {
@@ -34,9 +35,7 @@ export class SubmissionService {
       throw new NotFoundException('Event not found');
     }
 
-    if (event.status !== 'running') {
-      throw new BadRequestException('Submissions are allowed only while event is running');
-    }
+    EventService.assertSubmissionAllowed(event.status);
 
     const participant = await this.prisma.participant.findUnique({
       where: {

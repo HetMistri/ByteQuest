@@ -1,4 +1,4 @@
-import type { LeaderboardEntry } from "../../../lib/events";
+import type { LeaderboardEntry } from "../lib/events";
 
 type LeaderboardPanelProps = {
   entries: LeaderboardEntry[];
