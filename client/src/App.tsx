@@ -11,6 +11,8 @@ import Profile from "./screens/Profile";
 import EventsPage from "./screens/Event/EventsPage";
 import EventWaitingRoom from "./screens/Event/EventWaitingRoom";
 import EventRoom from "./screens/Event/EventRoom";
+import CreateEventPage from "./screens/Event/CreateEventPage";
+import EventResultsPage from "./screens/Event/EventResultsPage";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -140,6 +142,16 @@ export default function App() {
               }
             />
             <Route
+              path="/events/create"
+              element={
+                isAuthenticated && session && role === "coordinator" ? (
+                  <CreateEventPage accessToken={session.access_token} />
+                ) : (
+                  <Navigate to="/events" replace />
+                )
+              }
+            />
+            <Route
               path="/event/waiting"
               element={
                 isAuthenticated && session ? (
@@ -148,6 +160,16 @@ export default function App() {
                     role={role ?? "participant"}
                     userId={session.user.id}
                   />
+                ) : (
+                  <Navigate to="/auth" replace />
+                )
+              }
+            />
+            <Route
+              path="/event/results"
+              element={
+                isAuthenticated && session ? (
+                  <EventResultsPage accessToken={session.access_token} />
                 ) : (
                   <Navigate to="/auth" replace />
                 )

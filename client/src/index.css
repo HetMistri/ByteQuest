@@ -260,6 +260,47 @@
         transition: width 0.25s ease;
     }
 
+    .roadmap-wrap {
+        border: 2px solid var(--accent-border);
+        padding: 12px;
+        margin-top: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        background: color-mix(in oklab, var(--panel-background) 84%, black 16%);
+    }
+
+    .roadmap-node-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .roadmap-node {
+        width: 30px;
+        height: 30px;
+        border: 2px solid var(--accent-border);
+        display: grid;
+        place-items: center;
+        color: var(--accent-muted);
+        font-size: 0.75rem;
+    }
+
+    .roadmap-node.done {
+        color: var(--panel-background);
+        background: var(--accent-xyz);
+    }
+
+    .roadmap-node.current {
+        color: var(--accent-xyz);
+        border-color: var(--accent-xyz);
+    }
+
+    .roadmap-link {
+        width: 22px;
+        border-top: 2px solid var(--accent-border);
+    }
+
     .inline-link-button {
         display: inline-block;
         text-decoration: none;

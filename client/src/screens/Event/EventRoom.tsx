@@ -1,24 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
 import {
-  addProblem,
   endEvent,
   getEventDetails,
   kickParticipant,
   listParticipants,
+  listProblems,
   pauseEvent,
   startEvent,
   submitAnswer,
   type EventDetails,
   type ParticipantRecord,
+  type ProblemRecord,
   type SubmissionResult,
+  updateProblem,
 } from "../../lib/events";
-import { clearActiveEventId, getActiveEventId } from "../../lib/event-session";
-import EventProgressCard from "./components/EventProgressCard";
+import { clearActiveEventId, getActiveEventId, setCompletedEventId } from "../../lib/event-session";
 import ProblemWorkspace from "./components/ProblemWorkspace";
 import CoordinatorEventControls from "./components/CoordinatorEventControls";
 import LeaderboardPanel from "./components/LeaderboardPanel";
+import ProblemRoadmap from "./components/ProblemRoadmap";
 
 type EventRoomProps = {
   accessToken: string;
@@ -26,11 +27,28 @@ type EventRoomProps = {
   userId: string;
 };
 
-const PROBLEM_BUCKET = import.meta.env.VITE_SUPABASE_PROBLEM_BUCKET || "problem-assets";
+const formatDuration = (totalSeconds: number): string => {
+  const safeSeconds = Math.max(0, totalSeconds);
+  const minutes = Math.floor(safeSeconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const seconds = (safeSeconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${seconds}`;
+};
 
 export default function EventRoom({ accessToken, role, userId }: EventRoomProps) {
   const [event, setEvent] = useState<EventDetails | null>(null);
+  const [lastSyncAtMs, setLastSyncAtMs] = useState<number | null>(null);
+  const [tickNowMs, setTickNowMs] = useState<number>(Date.now());
   const [participants, setParticipants] = useState<ParticipantRecord[]>([]);
+  const [problems, setProblems] = useState<ProblemRecord[]>([]);
+  const [editingProblemId, setEditingProblemId] = useState<string | null>(null);
+  const [problemEditDraft, setProblemEditDraft] = useState({
+    title: "",
+    description: "",
+    solution: "",
+    orderIndex: "",
+  });
   const [answer, setAnswer] = useState("");
   const [submissionResult, setSubmissionResult] = useState<SubmissionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,15 +67,27 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
     try {
       const details = await getEventDetails(accessToken, activeEventId);
       setEvent(details);
+      setLastSyncAtMs(Date.now());
 
       const joinedParticipants = await listParticipants(accessToken, activeEventId);
       setParticipants(joinedParticipants);
+
+      if (isCoordinator) {
+        const eventProblems = await listProblems(accessToken, activeEventId);
+        setProblems(eventProblems);
+      }
 
       if (!isCoordinator) {
         const isStillJoined = joinedParticipants.some((participant) => participant.userId === userId);
         if (!isStillJoined) {
           clearActiveEventId();
           navigate("/events?kicked=1", { replace: true });
+          return;
+        }
+
+        if (details.status === "ended") {
+          setCompletedEventId(details.id);
+          navigate("/event/results", { replace: true });
           return;
         }
 
@@ -77,46 +107,19 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
   }, [loadRoom]);
 
   useEffect(() => {
-    if (!event?.startedAt) {
-      return;
-    }
+    const interval = window.setInterval(() => {
+      setTickNowMs(Date.now());
+    }, 1000);
 
-    const updateOnTick = () => {
-      const startedAt = event.startedAt;
-      if (!startedAt) {
-        return;
-      }
-
-      const endMs = new Date(startedAt).getTime() + event.timeLimit * 60 * 1000;
-      if (Date.now() >= endMs) {
-        clearActiveEventId();
-      }
-    };
-
-    const interval = window.setInterval(updateOnTick, 1000);
     return () => window.clearInterval(interval);
-  }, [event]);
+  }, []);
 
-  const uploadProblemFile = async (eventId: string, file: File | null): Promise<string | undefined> => {
-    if (!file) {
-      return undefined;
+  useEffect(() => {
+    if (event?.status === "ended" && !isCoordinator) {
+      setCompletedEventId(event.id);
+      navigate("/event/results", { replace: true });
     }
-
-    const normalizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-    const filePath = `${eventId}/${Date.now()}-${normalizedFileName}`;
-
-    const uploadResult = await supabase.storage.from(PROBLEM_BUCKET).upload(filePath, file, {
-      upsert: false,
-      contentType: file.type || undefined,
-    });
-
-    if (uploadResult.error) {
-      throw new Error(uploadResult.error.message);
-    }
-
-    const { data } = supabase.storage.from(PROBLEM_BUCKET).getPublicUrl(filePath);
-    return data.publicUrl;
-  };
+  }, [event, isCoordinator, navigate]);
 
   const handleLifecycle = async (action: "start" | "pause" | "end") => {
     if (!event || !isCoordinator) {
@@ -137,40 +140,12 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
         await endEvent(accessToken, event.id);
         clearActiveEventId();
         navigate("/events", { replace: true });
+        return;
       }
 
       await loadRoom();
     } catch {
       setError(`Could not ${action} event.`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAddProblem = async (input: {
-    title: string;
-    description: string;
-    solution: string;
-    file: File | null;
-  }) => {
-    if (!event || !isCoordinator) {
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      const downloadableContentUrl = await uploadProblemFile(event.id, input.file);
-      await addProblem(accessToken, event.id, {
-        title: input.title,
-        description: input.description,
-        solution: input.solution,
-        downloadableContentUrl,
-      });
-      await loadRoom();
-    } catch {
-      setError("Could not add problem. Check bucket permissions and payload.");
     } finally {
       setIsSubmitting(false);
     }
@@ -188,7 +163,18 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
 
     try {
       const result = await submitAnswer(accessToken, event.id, answer);
-      setSubmissionResult(result);
+      if (result.completed) {
+        setCompletedEventId(event.id);
+      }
+
+      setSubmissionResult(
+        result.completed
+          ? {
+              ...result,
+              message: "Correct! You completed all problems. Waiting for event end...",
+            }
+          : result,
+      );
       setAnswer("");
       await loadRoom();
     } catch {
@@ -216,13 +202,117 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
     }
   };
 
+  const beginEditProblem = (problem: ProblemRecord) => {
+    setEditingProblemId(problem.id);
+    setProblemEditDraft({
+      title: problem.title,
+      description: problem.description,
+      solution: "",
+      orderIndex: String(problem.orderIndex),
+    });
+  };
+
+  const handleUpdateProblem = async (submitEvent: React.FormEvent<HTMLFormElement>) => {
+    submitEvent.preventDefault();
+
+    if (!event || !isCoordinator || !editingProblemId) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      await updateProblem(accessToken, event.id, editingProblemId, {
+        title: problemEditDraft.title,
+        description: problemEditDraft.description,
+        solution: problemEditDraft.solution.trim() || undefined,
+        orderIndex: problemEditDraft.orderIndex ? Number(problemEditDraft.orderIndex) : undefined,
+      });
+      setEditingProblemId(null);
+      setProblemEditDraft({ title: "", description: "", solution: "", orderIndex: "" });
+      await loadRoom();
+    } catch {
+      setError("Could not update problem. Problems are editable only while event is scheduled.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const computedTotalElapsedSeconds = useMemo(() => {
+    if (!event) {
+      return 0;
+    }
+
+    const baseElapsed = event.totalElapsedSeconds ?? 0;
+    const totalDuration = event.totalDurationSeconds ?? event.timeLimit * 60;
+
+    if (event.status !== "running" || !lastSyncAtMs) {
+      return Math.min(totalDuration, baseElapsed);
+    }
+
+    const elapsedSinceSync = Math.max(0, Math.floor((tickNowMs - lastSyncAtMs) / 1000));
+    return Math.min(totalDuration, baseElapsed + elapsedSinceSync);
+  }, [event, lastSyncAtMs, tickNowMs]);
+
+  const computedProblemTimeSpentSeconds = useMemo(() => {
+    if (!event) {
+      return 0;
+    }
+
+    const baseProblemElapsed = event.problemTimeSpentSeconds ?? 0;
+
+    if (event.status !== "running" || !event.currentProblem || !lastSyncAtMs) {
+      return baseProblemElapsed;
+    }
+
+    const elapsedSinceSync = Math.max(0, Math.floor((tickNowMs - lastSyncAtMs) / 1000));
+    return baseProblemElapsed + elapsedSinceSync;
+  }, [event, lastSyncAtMs, tickNowMs]);
+
+  const computedUserTotalTimeSpentSeconds = useMemo(() => {
+    if (!event) {
+      return 0;
+    }
+
+    const baseUserTotal = event.userTotalTimeSpentSeconds ?? 0;
+    const totalDuration = event.totalDurationSeconds ?? event.timeLimit * 60;
+
+    if (event.status !== "running" || !event.currentProblem || !lastSyncAtMs) {
+      return Math.min(totalDuration, baseUserTotal);
+    }
+
+    const elapsedSinceSync = Math.max(0, Math.floor((tickNowMs - lastSyncAtMs) / 1000));
+    return Math.min(totalDuration, baseUserTotal + elapsedSinceSync);
+  }, [event, lastSyncAtMs, tickNowMs]);
+
+  const computedTimeRemainingSeconds = useMemo(() => {
+    if (!event) {
+      return 0;
+    }
+
+    const totalDuration = event.totalDurationSeconds ?? event.timeLimit * 60;
+    return Math.max(0, totalDuration - computedTotalElapsedSeconds);
+  }, [event, computedTotalElapsedSeconds]);
+
   const eventExpired = useMemo(() => {
-    if (!event?.startedAt) {
+    if (!event) {
       return false;
     }
 
-    return Date.now() >= new Date(event.startedAt).getTime() + event.timeLimit * 60 * 1000;
-  }, [event]);
+    const totalDuration = event.totalDurationSeconds ?? event.timeLimit * 60;
+    return computedTotalElapsedSeconds >= totalDuration;
+  }, [event, computedTotalElapsedSeconds]);
+
+  const canShowLeaderboard = isCoordinator || event?.status === "ended";
+
+  const isParticipantCompleted = useMemo(() => {
+    if (!event || isCoordinator) {
+      return false;
+    }
+
+    return (event.totalProblems ?? 0) > 0 && !event.currentProblem;
+  }, [event, isCoordinator]);
 
   if (error) {
     return <p className="error-text">{error}</p>;
@@ -237,16 +327,107 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
       <h2 className="section-title">Event Room</h2>
       <div className="section-divider" />
 
-      <EventProgressCard
-        eventName={event.name}
-        status={event.status}
-        currentQuestionIndex={event.currentQuestionIndex ?? 1}
-        totalProblems={event.totalProblems ?? 0}
-        totalElapsedSeconds={event.totalElapsedSeconds ?? 0}
-        totalDurationSeconds={event.totalDurationSeconds ?? event.timeLimit * 60}
-        problemTimeSpentSeconds={event.problemTimeSpentSeconds ?? 0}
-        progressPercent={event.progressPercent ?? 0}
-      />
+      <div className="room-panel">
+        <p className="status-text room-text">Event: {event.name}</p>
+        <p className="status-text room-text">Status: {event.status}</p>
+        {!isCoordinator ? (
+          <>
+            <p className="status-text room-text">
+              Total Timer: {formatDuration(computedTotalElapsedSeconds)} / {formatDuration(event.totalDurationSeconds ?? event.timeLimit * 60)}
+            </p>
+            <p className="status-text room-text">Your Total Time Spent: {formatDuration(computedUserTotalTimeSpentSeconds)}</p>
+            <p className="status-text room-text">Problem Time Spent: {formatDuration(computedProblemTimeSpentSeconds)}</p>
+            <p className="status-text room-text">Time Remaining: {formatDuration(computedTimeRemainingSeconds)}</p>
+          </>
+        ) : null}
+      </div>
+
+      {!isCoordinator ? (
+        <ProblemRoadmap
+          totalProblems={event.totalProblems ?? 0}
+          currentQuestionIndex={event.currentQuestionIndex ?? 1}
+        />
+      ) : null}
+
+      {isCoordinator ? (
+        <div className="event-create-panel">
+          <h3 className="section-title mini">Problem Set</h3>
+          {problems.length === 0 ? <p className="status-text">No problems added yet.</p> : null}
+          <ul className="menu-list">
+            {problems.map((problem) => (
+              <li key={problem.id} className="menu-item participant-item">
+                <span>
+                  #{problem.orderIndex} {problem.title}
+                </span>
+                {event.status === "scheduled" ? (
+                  <button
+                    type="button"
+                    className="secondary-button small"
+                    onClick={() => beginEditProblem(problem)}
+                  >
+                    Edit
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+
+          {event.status !== "scheduled" ? (
+            <p className="status-text">Problems are locked once event starts.</p>
+          ) : null}
+
+          {editingProblemId && event.status === "scheduled" ? (
+            <form className="auth-form" onSubmit={handleUpdateProblem}>
+              <label htmlFor="editTitle">Title</label>
+              <input
+                id="editTitle"
+                type="text"
+                value={problemEditDraft.title}
+                onChange={(inputEvent) =>
+                  setProblemEditDraft((previous) => ({ ...previous, title: inputEvent.target.value }))
+                }
+                required
+              />
+
+              <label htmlFor="editDescription">Definition</label>
+              <input
+                id="editDescription"
+                type="text"
+                value={problemEditDraft.description}
+                onChange={(inputEvent) =>
+                  setProblemEditDraft((previous) => ({ ...previous, description: inputEvent.target.value }))
+                }
+                required
+              />
+
+              <label htmlFor="editSolution">Solution (leave empty to keep existing)</label>
+              <input
+                id="editSolution"
+                type="text"
+                value={problemEditDraft.solution}
+                onChange={(inputEvent) =>
+                  setProblemEditDraft((previous) => ({ ...previous, solution: inputEvent.target.value }))
+                }
+              />
+
+              <label htmlFor="editOrder">Order Index</label>
+              <input
+                id="editOrder"
+                type="number"
+                min={1}
+                value={problemEditDraft.orderIndex}
+                onChange={(inputEvent) =>
+                  setProblemEditDraft((previous) => ({ ...previous, orderIndex: inputEvent.target.value }))
+                }
+              />
+
+              <button type="submit" className="primary-button" disabled={isSubmitting}>
+                {isSubmitting ? "Saving..." : "Save Problem"}
+              </button>
+            </form>
+          ) : null}
+        </div>
+      ) : null}
 
       {eventExpired ? (
         <button type="button" className="secondary-button" onClick={() => navigate("/events", { replace: true })}>
@@ -254,15 +435,29 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
         </button>
       ) : null}
 
-      <ProblemWorkspace
-        isCoordinator={isCoordinator}
-        event={event}
-        answer={answer}
-        onAnswerChange={setAnswer}
-        onSubmitAnswer={handleSubmitAnswer}
-        submissionResult={submissionResult}
-        isSubmitting={isSubmitting}
-      />
+      {isParticipantCompleted ? (
+        <div className="event-create-panel">
+          <h3 className="section-title mini">All Problems Completed</h3>
+          <p className="status-text">
+            You have solved all unlocked problems. Wait for the coordinator to end the event to view final results.
+          </p>
+          {event.status === "ended" ? (
+            <button type="button" className="primary-button" onClick={() => navigate("/event/results", { replace: true })}>
+              View Results
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <ProblemWorkspace
+          isCoordinator={isCoordinator}
+          event={event}
+          answer={answer}
+          onAnswerChange={setAnswer}
+          onSubmitAnswer={handleSubmitAnswer}
+          submissionResult={submissionResult}
+          isSubmitting={isSubmitting}
+        />
+      )}
 
       <div className="event-layout">
         {isCoordinator ? (
@@ -271,16 +466,22 @@ export default function EventRoom({ accessToken, role, userId }: EventRoomProps)
             eventStatus={event.status}
             isSubmitting={isSubmitting}
             onLifecycle={handleLifecycle}
-            onAddProblem={handleAddProblem}
           />
         ) : null}
 
-        <LeaderboardPanel
-          participants={participants}
-          showKick={isCoordinator}
-          isSubmitting={isSubmitting}
-          onKick={handleKickParticipant}
-        />
+        {canShowLeaderboard ? (
+          <LeaderboardPanel
+            participants={participants}
+            showKick={isCoordinator}
+            isSubmitting={isSubmitting}
+            onKick={handleKickParticipant}
+          />
+        ) : (
+          <div className="event-column">
+            <h3 className="section-title mini">Leaderboard</h3>
+            <p className="status-text">Leaderboard unlocks when event ends.</p>
+          </div>
+        )}
       </div>
     </section>
   );

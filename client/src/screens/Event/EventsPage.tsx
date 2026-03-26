@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  createEvent,
   getEventDetails,
   joinEvent,
   listParticipants,
@@ -22,9 +21,6 @@ export default function EventsPage({ role, accessToken, userId }: EventsPageProp
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [eventName, setEventName] = useState("");
-  const [timeLimit, setTimeLimit] = useState("60");
-  const [password, setPassword] = useState("");
   const [joinPassword, setJoinPassword] = useState("");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -81,33 +77,6 @@ export default function EventsPage({ role, accessToken, userId }: EventsPageProp
       setSelectedEvent(details);
     } catch {
       setError("Could not load this event.");
-    }
-  };
-
-  const handleCreateEvent = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!canCreateEvent) {
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      const created = await createEvent(accessToken, {
-        name: eventName,
-        timeLimit: Number(timeLimit),
-        password: password.trim() || undefined,
-      });
-      setSelectedEvent(created);
-      setEventName("");
-      setTimeLimit("60");
-      setPassword("");
-      await refreshEvents();
-    } catch {
-      setError("Could not create event.");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -170,6 +139,9 @@ export default function EventsPage({ role, accessToken, userId }: EventsPageProp
       <div className="event-layout">
         <div className="event-column">
           <h3 className="section-title mini">Joinable Events</h3>
+          {canCreateEvent ? (
+            <button type="button" className="secondary-button" onClick={() => navigate("/events/create")}>Create Event</button>
+          ) : null}
           {loading ? <p className="status-text">Loading events...</p> : null}
           {!loading && events.length === 0 ? <p className="status-text">No events available.</p> : null}
           <ul className="menu-list">
@@ -232,46 +204,6 @@ export default function EventsPage({ role, accessToken, userId }: EventsPageProp
           )}
         </div>
       </div>
-
-      {canCreateEvent ? (
-        <div className="event-create-panel">
-          <h3 className="section-title mini">Schedule Event</h3>
-          <form className="auth-form" onSubmit={handleCreateEvent}>
-            <label htmlFor="eventName">Event Name</label>
-            <input
-              id="eventName"
-              type="text"
-              value={eventName}
-              onChange={(event) => setEventName(event.target.value)}
-              placeholder="ByteQuest Weekly #1"
-              required
-            />
-
-            <label htmlFor="timeLimit">Time Limit (minutes)</label>
-            <input
-              id="timeLimit"
-              type="number"
-              value={timeLimit}
-              onChange={(event) => setTimeLimit(event.target.value)}
-              min={1}
-              required
-            />
-
-            <label htmlFor="eventPassword">Password (optional)</label>
-            <input
-              id="eventPassword"
-              type="text"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Optional"
-            />
-
-            <button type="submit" className="primary-button" disabled={isSubmitting}>
-              {isSubmitting ? "Scheduling..." : "Schedule Event"}
-            </button>
-          </form>
-        </div>
-      ) : null}
     </section>
   );
 }

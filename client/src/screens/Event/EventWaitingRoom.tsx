@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getEventDetails, listParticipants, type EventSummary } from "../../lib/events";
-import { clearActiveEventId, getActiveEventId } from "../../lib/event-session";
+import { clearActiveEventId, getActiveEventId, setCompletedEventId } from "../../lib/event-session";
 
 type EventWaitingRoomProps = {
   accessToken: string;
@@ -51,6 +51,12 @@ export default function EventWaitingRoom({ accessToken, role, userId }: EventWai
 
         if (details.status === "running") {
           navigate("/event", { replace: true });
+          return;
+        }
+
+        if (details.status === "ended") {
+          setCompletedEventId(details.id);
+          navigate("/event/results", { replace: true });
           return;
         }
       } catch {
