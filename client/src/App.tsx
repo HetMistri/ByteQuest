@@ -8,9 +8,9 @@ import Header from "./components/Header";
 import Auth from "./auth/Auth";
 import Menu from "./components/Menu";
 import Profile from "./components/Profile";
-import EventsPage from "./components/EventsPage";
-import EventWaitingRoom from "./components/EventWaitingRoom";
-import EventRoom from "./components/EventRoom";
+import EventsPage from "./components/Event/EventsPage";
+import EventWaitingRoom from "./components/Event/EventWaitingRoom";
+import EventRoom from "./components/Event/EventRoom";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);

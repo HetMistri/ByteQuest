@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getEventDetails, listParticipants, type EventSummary } from "../lib/events";
-import { clearActiveEventId, getActiveEventId } from "../lib/event-session";
+import { getEventDetails, listParticipants, type EventSummary } from "../../lib/events";
+import { clearActiveEventId, getActiveEventId } from "../../lib/event-session";
 
 type EventWaitingRoomProps = {
   accessToken: string;

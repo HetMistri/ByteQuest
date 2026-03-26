@@ -9,8 +9,8 @@ import {
   startEvent,
   type EventSummary,
   type ParticipantRecord,
-} from "../lib/events";
-import { clearActiveEventId, getActiveEventId } from "../lib/event-session";
+} from "../../lib/events";
+import { clearActiveEventId, getActiveEventId } from "../../lib/event-session";
 
 type EventRoomProps = {
   accessToken: string;

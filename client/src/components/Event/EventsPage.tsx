@@ -7,8 +7,8 @@ import {
   listParticipants,
   listScheduledEvents,
   type EventSummary,
-} from "../lib/events";
-import { setActiveEventId } from "../lib/event-session";
+} from "../../lib/events";
+import { setActiveEventId } from "../../lib/event-session";
 
 type EventsPageProps = {
   role: string;
