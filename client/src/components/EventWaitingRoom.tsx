@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getEventDetails, type EventSummary } from "../lib/events";
+import { getEventDetails, listParticipants, type EventSummary } from "../lib/events";
 import { clearActiveEventId, getActiveEventId } from "../lib/event-session";
 
 type EventWaitingRoomProps = {
   accessToken: string;
   role: string;
+  userId: string;
 };
 
-export default function EventWaitingRoom({ accessToken, role }: EventWaitingRoomProps) {
+export default function EventWaitingRoom({ accessToken, role, userId }: EventWaitingRoomProps) {
   const [event, setEvent] = useState<EventSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
@@ -40,6 +41,14 @@ export default function EventWaitingRoom({ accessToken, role }: EventWaitingRoom
         const details = await getEventDetails(accessToken, activeEventId);
         setEvent(details);
 
+        const participants = await listParticipants(accessToken, activeEventId);
+        const isStillJoined = participants.some((participant) => participant.userId === userId);
+        if (!isStillJoined) {
+          clearActiveEventId();
+          navigate("/events?kicked=1", { replace: true });
+          return;
+        }
+
         if (details.status === "running") {
           navigate("/event", { replace: true });
           return;
@@ -52,7 +61,7 @@ export default function EventWaitingRoom({ accessToken, role }: EventWaitingRoom
     loadEvent();
     const interval = window.setInterval(loadEvent, 8000);
     return () => window.clearInterval(interval);
-  }, [accessToken, navigate, role]);
+  }, [accessToken, navigate, role, userId]);
 
   useEffect(() => {
     if (!event?.startedAt) {

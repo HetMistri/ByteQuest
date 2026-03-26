@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   createEvent,
   getEventDetails,
@@ -27,6 +27,7 @@ export default function EventsPage({ role, accessToken, userId }: EventsPageProp
   const [password, setPassword] = useState("");
   const [joinPassword, setJoinPassword] = useState("");
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const isCoordinator = role === "coordinator";
   const isParticipant = !isCoordinator;
@@ -61,6 +62,17 @@ export default function EventsPage({ role, accessToken, userId }: EventsPageProp
     refreshEvents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
+
+  useEffect(() => {
+    if (searchParams.get("kicked") !== "1") {
+      return;
+    }
+
+    setError("You were kicked from the event.");
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("kicked");
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const handleSelectEvent = async (eventId: string) => {
     setError(null);

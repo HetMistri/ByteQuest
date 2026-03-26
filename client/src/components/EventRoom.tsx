@@ -15,9 +15,10 @@ import { clearActiveEventId, getActiveEventId } from "../lib/event-session";
 type EventRoomProps = {
   accessToken: string;
   role: string;
+  userId: string;
 };
 
-export default function EventRoom({ accessToken, role }: EventRoomProps) {
+export default function EventRoom({ accessToken, role, userId }: EventRoomProps) {
   const [event, setEvent] = useState<EventSummary | null>(null);
   const [participants, setParticipants] = useState<ParticipantRecord[]>([]);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
@@ -51,6 +52,15 @@ export default function EventRoom({ accessToken, role }: EventRoomProps) {
         const joinedParticipants = await listParticipants(accessToken, activeEventId);
         setParticipants(joinedParticipants);
 
+        if (!isCoordinator) {
+          const isStillJoined = joinedParticipants.some((participant) => participant.userId === userId);
+          if (!isStillJoined) {
+            clearActiveEventId();
+            navigate("/events?kicked=1", { replace: true });
+            return;
+          }
+        }
+
         if (!isCoordinator && details.status !== "running") {
           navigate("/event/waiting", { replace: true });
         }
@@ -62,7 +72,7 @@ export default function EventRoom({ accessToken, role }: EventRoomProps) {
     loadRoom();
     const interval = window.setInterval(loadRoom, 8000);
     return () => window.clearInterval(interval);
-  }, [accessToken, isCoordinator, navigate]);
+  }, [accessToken, isCoordinator, navigate, userId]);
 
   useEffect(() => {
     if (!event?.startedAt) {

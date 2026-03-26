@@ -146,6 +146,7 @@ export default function App() {
                   <EventWaitingRoom
                     accessToken={session.access_token}
                     role={role ?? "participant"}
+                    userId={session.user.id}
                   />
                 ) : (
                   <Navigate to="/auth" replace />
@@ -159,6 +160,7 @@ export default function App() {
                   <EventRoom
                     accessToken={session.access_token}
                     role={role ?? "participant"}
+                    userId={session.user.id}
                   />
                 ) : (
                   <Navigate to="/auth" replace />
