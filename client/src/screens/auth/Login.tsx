@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { login, loginWithGithub, loginWithGoogle } from "../lib/auth";
+import { login, loginWithGithub, loginWithGoogle } from "../../lib/auth";
 
 export default function Login() {
   const [email, setEmail] = useState("");

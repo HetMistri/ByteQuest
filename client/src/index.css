@@ -151,11 +151,11 @@
     }
 
     .menu-home {
-        border: 2px solid var(--accent-border);
+        /* border: 2px solid var(--accent-border); */
         padding: 12px;
         margin-top: 10px;
         max-width: 560px;
-        background: color-mix(in oklab, var(--panel-background) 85%, black 15%);
+        /* background: color-mix(in oklab, var(--panel-background) 85%, black 15%); */
     }
 
     .play-toolbar {
@@ -316,7 +316,7 @@
 
     .section-title {
         color: var(--accent-xyz);
-        font-size: clamp(1rem, 2.2vw, 2rem);
+        font-size: clamp(1rem, 1.8vw, 2rem);
         margin-bottom: 14px;
         line-height: 1.3;
     }
@@ -344,8 +344,7 @@
         color: var(--accent-xyz);
     }
 
-    .tab-button.active::before,
-    .menu-item::before {
+    .tab-button.active::before {
         content: "> ";
     }
 
@@ -356,7 +355,7 @@
     .menu-item {
         color: var(--accent-xyz);
         margin-bottom: 12px;
-        font-size: clamp(0.95rem, 1.8vw, 1.8rem);
+        font-size: clamp(0.95rem, 1.2vw, 1.8rem);
         cursor: pointer;
     }
 

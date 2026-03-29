@@ -1,4 +1,4 @@
-import { register } from "../lib/auth";
+import { register } from "../../lib/auth";
 import { useState, type FormEvent } from "react";
 
 export default function Register() {

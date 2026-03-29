@@ -5,7 +5,7 @@ import { supabase } from "./lib/supabase";
 import { getCurrentUserRole, getSession, logout } from "./lib/auth";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
-import Auth from "./auth/Auth";
+import Auth from "./screens/auth/Auth";
 import Menu from "./screens/Menu";
 import Profile from "./screens/Profile";
 import EventsPage from "./screens/Event/EventsPage";
@@ -117,10 +117,6 @@ export default function App() {
               element={
                 isAuthenticated && session ? (
                   <Menu
-                    displayName={
-                      (session.user.user_metadata?.display_name as string | undefined) ?? "Player"
-                    }
-                    role={role ?? "participant"}
                   />
                 ) : (
                   <Navigate to="/auth" replace />
