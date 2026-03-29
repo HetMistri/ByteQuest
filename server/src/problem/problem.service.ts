@@ -124,6 +124,8 @@ export class ProblemService {
       },
     });
   }
+
+  
   async getCurrentProblem(eventId: string, userId: string, role: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },

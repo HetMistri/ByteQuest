@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import {
   endEvent,
   getEventDetails,
@@ -14,8 +15,8 @@ import {
   type LeaderboardEntry,
   type ProblemRecord,
   type SubmissionResult,
-  updateProblem,
 } from "../../lib/events";
+
 import {
   clearActiveEventId,
   getActiveEventId,
@@ -34,12 +35,12 @@ type EventRoomProps = {
 };
 
 const formatDuration = (totalSeconds: number): string => {
-  const safeSeconds = Math.max(0, totalSeconds);
-  const minutes = Math.floor(safeSeconds / 60)
+  const safe = Math.max(0, totalSeconds);
+  const m = Math.floor(safe / 60)
     .toString()
     .padStart(2, "0");
-  const seconds = (safeSeconds % 60).toString().padStart(2, "0");
-  return `${minutes}:${seconds}`;
+  const s = (safe % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
 };
 
 export default function EventRoom({
@@ -47,25 +48,20 @@ export default function EventRoom({
   role,
   userId,
 }: EventRoomProps) {
+  const navigate = useNavigate();
+  const isCoordinator = role === "coordinator";
+  const activeEventId = getActiveEventId();
+
   const MIN_PROBLEMS_TO_START = 5;
 
+  /* ================= STATE ================= */
+
   const [event, setEvent] = useState<EventDetails | null>(null);
-  const [lastSyncAtMs, setLastSyncAtMs] = useState<number | null>(null);
-  const [tickNowMs, setTickNowMs] = useState<number>(Date.now());
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [problems, setProblems] = useState<ProblemRecord[]>([]);
 
-  const [leaderboardEntries, setLeaderboardEntries] = useState<
-    LeaderboardEntry[]
-  >([]);
-
-  const [problems, setProblems] = useState<ProblemRecord[]>([]); // ✅ IMPORTANT
-
-  const [editingProblemId, setEditingProblemId] = useState<string | null>(null);
-  const [problemEditDraft, setProblemEditDraft] = useState({
-    title: "",
-    description: "",
-    solution: "",
-    orderIndex: "",
-  });
+  const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
+  const [tickNow, setTickNow] = useState<number>(Date.now());
 
   const [answer, setAnswer] = useState("");
   const [submissionResult, setSubmissionResult] =
@@ -73,11 +69,6 @@ export default function EventRoom({
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const navigate = useNavigate();
-
-  const isCoordinator = role === "coordinator";
-  const activeEventId = getActiveEventId();
 
   /* ================= LOAD ================= */
 
@@ -90,35 +81,34 @@ export default function EventRoom({
     try {
       const details = await getEventDetails(accessToken, activeEventId);
       setEvent(details);
-      setLastSyncAtMs(Date.now());
+      setLastSyncAt(Date.now());
 
-      const joinedParticipants = await listParticipants(
+      const participants = await listParticipants(
         accessToken,
         activeEventId
       );
 
+      // leaderboard only for coordinator or ended
       if (isCoordinator || details.status === "ended") {
-        const ranking = await getLeaderboard(accessToken, activeEventId);
-        setLeaderboardEntries(ranking);
+        const lb = await getLeaderboard(accessToken, activeEventId);
+        setLeaderboard(lb);
       } else {
-        setLeaderboardEntries([]);
+        setLeaderboard([]);
       }
 
-      /* 🔥 KEY: Fetch problems for coordinator */
+      // coordinator fetches all problems
       if (isCoordinator) {
-        const eventProblems = await listProblems(
-          accessToken,
-          activeEventId
-        );
-        setProblems(eventProblems);
+        const probs = await listProblems(accessToken, activeEventId);
+        setProblems(probs);
       }
 
+      // participant flow guards
       if (!isCoordinator) {
-        const isStillJoined = joinedParticipants.some(
+        const stillJoined = participants.some(
           (p) => p.userId === userId
         );
 
-        if (!isStillJoined) {
+        if (!stillJoined) {
           clearActiveEventId();
           navigate("/events?kicked=1", { replace: true });
           return;
@@ -135,7 +125,7 @@ export default function EventRoom({
         }
       }
     } catch {
-      setError("Could not load event room.");
+      setError("Failed to load event room.");
     }
   }, [accessToken, activeEventId, isCoordinator, navigate, userId]);
 
@@ -145,20 +135,22 @@ export default function EventRoom({
     return () => clearInterval(interval);
   }, [loadRoom]);
 
+  // ticking timer
   useEffect(() => {
     const interval = setInterval(() => {
-      setTickNowMs(Date.now());
+      setTickNow(Date.now());
     }, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
+  // auto redirect if ended
   useEffect(() => {
     if (event?.status === "ended") {
       setCompletedEventId(event.id);
       navigate("/event/results", { replace: true });
     }
   }, [event, navigate]);
+
   /* ================= ACTIONS ================= */
 
   const handleLifecycle = async (action: "start" | "pause" | "end") => {
@@ -169,7 +161,7 @@ export default function EventRoom({
       (event.totalProblems ?? 0) < MIN_PROBLEMS_TO_START
     ) {
       setError(
-        `Add at least ${MIN_PROBLEMS_TO_START} problems before starting.`
+        `Minimum ${MIN_PROBLEMS_TO_START} problems required to start.`
       );
       return;
     }
@@ -182,22 +174,21 @@ export default function EventRoom({
       if (action === "pause") await pauseEvent(accessToken, event.id);
       if (action === "end") {
         await endEvent(accessToken, event.id);
-        setCompletedEventId(event.id); // 🔥 CRITICAL
+        setCompletedEventId(event.id);
         clearActiveEventId();
-        navigate("/event/results", { replace: true }); // 🔥 REDIRECT
-
+        navigate("/event/results", { replace: true });
         return;
       }
 
       await loadRoom();
     } catch {
-      setError(`Could not ${action} event.`);
+      setError(`Failed to ${action} event.`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleSubmitAnswer = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmitAnswer = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!event || !event.currentProblem || isCoordinator) return;
@@ -215,23 +206,23 @@ export default function EventRoom({
       setSubmissionResult(
         result.completed
           ? {
-            ...result,
-            message:
-              "Correct! Completed all problems. Waiting for event end...",
-          }
+              ...result,
+              message:
+                "Correct! Completed all problems. Waiting for event end...",
+            }
           : result
       );
 
       setAnswer("");
       await loadRoom();
     } catch {
-      setError("Could not submit answer.");
+      setError("Submission failed.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleKickParticipant = async (targetUserId: string) => {
+  const handleKick = async (targetUserId: string) => {
     if (!event || !isCoordinator) return;
 
     setIsSubmitting(true);
@@ -241,7 +232,7 @@ export default function EventRoom({
       await kickParticipant(accessToken, event.id, targetUserId);
       await loadRoom();
     } catch {
-      setError("Could not kick participant.");
+      setError("Failed to kick participant.");
     } finally {
       setIsSubmitting(false);
     }
@@ -249,27 +240,27 @@ export default function EventRoom({
 
   /* ================= COMPUTED ================= */
 
-  const computedTotalElapsedSeconds = useMemo(() => {
+  const elapsedSeconds = useMemo(() => {
     if (!event) return 0;
 
     const base = event.totalElapsedSeconds ?? 0;
     const total = event.totalDurationSeconds ?? event.timeLimit * 60;
 
-    if (event.status !== "running" || !lastSyncAtMs) {
+    if (event.status !== "running" || !lastSyncAt) {
       return Math.min(total, base);
     }
 
-    const delta = Math.floor((tickNowMs - lastSyncAtMs) / 1000);
+    const delta = Math.floor((tickNow - lastSyncAt) / 1000);
     return Math.min(total, base + delta);
-  }, [event, lastSyncAtMs, tickNowMs]);
+  }, [event, lastSyncAt, tickNow]);
 
-  const computedTimeRemainingSeconds = useMemo(() => {
+  const remainingSeconds = useMemo(() => {
     if (!event) return 0;
     const total = event.totalDurationSeconds ?? event.timeLimit * 60;
-    return Math.max(0, total - computedTotalElapsedSeconds);
-  }, [event, computedTotalElapsedSeconds]);
+    return Math.max(0, total - elapsedSeconds);
+  }, [event, elapsedSeconds]);
 
-  const isParticipantCompleted = useMemo(() => {
+  const isCompleted = useMemo(() => {
     if (!event || isCoordinator) return false;
     return (event.totalProblems ?? 0) > 0 && !event.currentProblem;
   }, [event, isCoordinator]);
@@ -277,31 +268,30 @@ export default function EventRoom({
   /* ================= UI ================= */
 
   if (error) return <p className="error-text">{error}</p>;
-  if (!event) return <p className="status-text">Loading event room...</p>;
+  if (!event) return <p className="status-text">Loading...</p>;
 
   return (
     <section className="event-room">
-      {/* STATUS BAR */}
+      {/* HEADER */}
       <div className="event-status-bar">
-        <div className="status-left">
+        <div>
           <span>{event.name}</span>
-          <span>[{event.status}]</span>
+          <span> [{event.status}]</span>
         </div>
 
         {!isCoordinator && (
-          <div className="status-right">
-            <span>
-              ⏱ {formatDuration(computedTotalElapsedSeconds)} /{" "}
-              {formatDuration(
-                event.totalDurationSeconds ?? event.timeLimit * 60
-              )}
-            </span>
-            <span>⏳ {formatDuration(computedTimeRemainingSeconds)}</span>
+          <div>
+            ⏱ {formatDuration(elapsedSeconds)} /{" "}
+            {formatDuration(
+              event.totalDurationSeconds ?? event.timeLimit * 60
+            )}
+            {" | "}
+            ⏳ {formatDuration(remainingSeconds)}
           </div>
         )}
       </div>
 
-      {/* MAIN */}
+      {/* BODY */}
       <div className="event-room-layout">
         <div className="event-main">
           {!isCoordinator && (
@@ -311,9 +301,9 @@ export default function EventRoom({
             />
           )}
 
-          {isParticipantCompleted ? (
+          {isCompleted ? (
             <div className="completion-panel">
-              <h3>All Problems Completed</h3>
+              <h3>Completed</h3>
               <p>Waiting for event to end...</p>
             </div>
           ) : (
@@ -332,10 +322,10 @@ export default function EventRoom({
 
         <div className="event-sidebar">
           <LeaderboardPanel
-            entries={leaderboardEntries}
+            entries={leaderboard}
             showKick={isCoordinator}
             isSubmitting={isSubmitting}
-            onKick={handleKickParticipant}
+            onKick={handleKick}
           />
 
           {isCoordinator && (
