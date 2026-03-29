@@ -13,15 +13,6 @@ import {
   type EventDetails,
 } from "../../lib/events";
 
-const formatDuration = (totalSeconds: number | null | undefined): string => {
-  if (totalSeconds == null) return "--";
-  const safe = Math.max(0, totalSeconds);
-  const minutes = Math.floor(safe / 60)
-    .toString()
-    .padStart(2, "0");
-  const seconds = (safe % 60).toString().padStart(2, "0");
-  return `${minutes}:${seconds}`;
-};
 
 type CoordinatorResultPageProps = {
   accessToken: string;
