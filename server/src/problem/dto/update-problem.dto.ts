@@ -10,8 +10,11 @@ export class UpdateProblemDto {
   @ApiPropertyOptional({ example: 'RDDRUR' })
   solution?: string;
 
-  @ApiPropertyOptional({ example: 'https://your-supabase-bucket-url/problem-assets/event-1/maze.png' })
-  downloadableContentUrl?: string;
+  @ApiPropertyOptional({
+    example: 'https://your-supabase-bucket-url/problem-assets/event-1/maze.png',
+    nullable: true,
+  })
+  downloadableContentUrl?: string | null;
 
   @ApiPropertyOptional({ example: 2 })
   orderIndex?: number;

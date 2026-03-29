@@ -59,7 +59,7 @@ export type CreateProblemInput = {
   title: string;
   description: string;
   solution: string;
-  downloadableContentUrl?: string;
+  downloadableContentUrl?: string | null;
   orderIndex?: number;
 };
 
@@ -67,7 +67,7 @@ export type UpdateProblemInput = {
   title?: string;
   description?: string;
   solution?: string;
-  downloadableContentUrl?: string;
+  downloadableContentUrl?: string | null;
   orderIndex?: number;
 };
 

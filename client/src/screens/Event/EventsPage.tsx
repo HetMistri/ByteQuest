@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   getEventDetails,
   joinEvent,
-  listParticipants,
   listScheduledEvents,
   type EventSummary,
 } from "../../lib/events";
@@ -15,86 +14,62 @@ type EventsPageProps = {
   userId: string;
 };
 
-export default function EventsPage({ role, accessToken, userId }: EventsPageProps) {
+export default function EventPage({ role, accessToken }: EventsPageProps) {
   const [events, setEvents] = useState<EventSummary[]>([]);
-  const [selectedEvent, setSelectedEvent] = useState<EventSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [joiningId, setJoiningId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [joinPassword, setJoinPassword] = useState("");
+
+  // password modal state
+  const [passwordEventId, setPasswordEventId] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
+
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const isCoordinator = role === "coordinator";
-  const isParticipant = !isCoordinator;
 
-  const canCreateEvent = useMemo(() => isCoordinator, [isCoordinator]);
-
-  const refreshEvents = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const fetchedEvents = await listScheduledEvents(accessToken);
-      setEvents(fetchedEvents);
-
-      if (selectedEvent) {
-        const exists = fetchedEvents.some((event) => event.id === selectedEvent.id);
-        if (exists) {
-          const details = await getEventDetails(accessToken, selectedEvent.id);
-          setSelectedEvent(details);
-        } else {
-          setSelectedEvent(null);
-        }
-      }
-    } catch {
-      setError("Could not load events.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  /* ================= LOAD EVENTS ================= */
 
   useEffect(() => {
-    refreshEvents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    (async () => {
+      try {
+        const data = await listScheduledEvents(accessToken);
+        setEvents(data);
+      } catch {
+        setError("Could not load events.");
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [accessToken]);
 
+  /* ================= HANDLE KICKED ================= */
+
   useEffect(() => {
-    if (searchParams.get("kicked") !== "1") {
-      return;
-    }
+    if (searchParams.get("kicked") !== "1") return;
 
     setError("You were kicked from the event.");
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.delete("kicked");
-    setSearchParams(nextParams, { replace: true });
+
+    const next = new URLSearchParams(searchParams);
+    next.delete("kicked");
+    setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  const handleSelectEvent = async (eventId: string) => {
-    setError(null);
-    try {
-      const details = await getEventDetails(accessToken, eventId);
-      setSelectedEvent(details);
-    } catch {
-      setError("Could not load this event.");
-    }
-  };
+  /* ================= JOIN ================= */
 
-  const handleJoin = async () => {
-    if (!selectedEvent) {
-      return;
-    }
-
-    setIsSubmitting(true);
+  const performJoin = async (eventId: string, password?: string) => {
+    setJoiningId(eventId);
     setError(null);
 
     try {
-      await joinEvent(accessToken, selectedEvent.id, {
-        password: isCoordinator ? undefined : joinPassword.trim() || undefined,
+      await joinEvent(accessToken, eventId, {
+        password: isCoordinator ? undefined : password || undefined,
       });
 
-      setActiveEventId(selectedEvent.id);
-      const details = await getEventDetails(accessToken, selectedEvent.id);
+      setActiveEventId(eventId);
+
+      const details = await getEventDetails(accessToken, eventId);
 
       if (isCoordinator || details.status === "running") {
         navigate("/event", { replace: true });
@@ -102,108 +77,115 @@ export default function EventsPage({ role, accessToken, userId }: EventsPageProp
         navigate("/event/waiting", { replace: true });
       }
     } catch {
-      setError("Join failed. Check event status, password, or active-event restriction.");
+      setError("Join failed. Check password or event state.");
     } finally {
-      setIsSubmitting(false);
+      setJoiningId(null);
+      setPasswordEventId(null);
+      setPassword("");
     }
   };
 
-  const checkAlreadyJoined = async () => {
-    if (!selectedEvent || !isParticipant) {
-      return;
-    }
-
-    try {
-      const participants = await listParticipants(accessToken, selectedEvent.id);
-      const joined = participants.some((participant) => participant.userId === userId);
-      if (joined) {
-        setActiveEventId(selectedEvent.id);
-      }
-    } catch {
-      // Ignore transient issues for soft check.
+  const handleJoinClick = (eventId: string) => {
+    if (isCoordinator) {
+      performJoin(eventId);
+    } else {
+      // open password modal instead of inline input
+      setPasswordEventId(eventId);
     }
   };
 
-  useEffect(() => {
-    checkAlreadyJoined();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedEvent?.id]);
+  /* ================= RENDER ================= */
 
   return (
-    <section className="menu-panel">
+    <section className="menu-panel relative">
       <h2 className="section-title">Events</h2>
       <div className="section-divider" />
 
-      {error ? <p className="error-text">{error}</p> : null}
+      {error && <p className="error-text">{error}</p>}
 
-      <div className="event-layout">
-        <div className="event-column">
-          <h3 className="section-title mini">Joinable Events</h3>
-          {canCreateEvent ? (
-            <button type="button" className="secondary-button" onClick={() => navigate("/events/create")}>Create Event</button>
-          ) : null}
-          {loading ? <p className="status-text">Loading events...</p> : null}
-          {!loading && events.length === 0 ? <p className="status-text">No events available.</p> : null}
-          <ul className="menu-list">
-            {events.map((event) => (
-              <li
-                key={event.id}
-                className={`menu-item ${selectedEvent?.id === event.id ? "active" : ""}`}
-                onClick={() => handleSelectEvent(event.id)}
-                onKeyDown={(keyboardEvent) => {
-                  if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") {
-                    handleSelectEvent(event.id);
-                  }
-                }}
-                role="button"
-                tabIndex={0}
-              >
-                {event.name}
-              </li>
-            ))}
-          </ul>
+      {loading && <p className="status-text">Loading events...</p>}
+
+      {!loading && events.length === 0 && (
+        <p className="status-text">No events available.</p>
+      )}
+
+      {!loading && events.length > 0 && (
+        <div className="table-container">
+          <table className="event-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Event Name</th>
+                <th className="text-right">Action</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {events.map((event) => (
+                <tr key={event.id}>
+                  <td>{event.id}</td>
+
+                  <td>{event.name}</td>
+
+                  <td className="text-right">
+                    <button
+                      className="secondary-button small"
+                      onClick={() => handleJoinClick(event.id)}
+                      disabled={joiningId === event.id}
+                    >
+                      {joiningId === event.id ? "..." : "JOIN"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+      )}
 
-        <div className="event-column">
-          <h3 className="section-title mini">Event Details</h3>
-          {selectedEvent ? (
-            <div className="event-details">
-              <p className="status-text">Name: {selectedEvent.name}</p>
-              <p className="status-text">Status: {selectedEvent.status}</p>
-              <p className="status-text">Time Limit: {selectedEvent.timeLimit} minutes</p>
-              <p className="status-text">Created By: {selectedEvent.createdBy}</p>
-              {selectedEvent.startedAt ? (
-                <p className="status-text">Started At: {new Date(selectedEvent.startedAt).toLocaleString()}</p>
-              ) : null}
+      {/* ================= PASSWORD MODAL ================= */}
 
-              <div className="join-panel">
-                {!isCoordinator ? (
-                  <>
-                    <label htmlFor="joinPassword">Password (if required)</label>
-                    <input
-                      id="joinPassword"
-                      type="text"
-                      value={joinPassword}
-                      onChange={(event) => setJoinPassword(event.target.value)}
-                      placeholder="Enter event password"
-                    />
-                  </>
-                ) : null}
-                <button
-                  type="button"
-                  className="primary-button"
-                  onClick={handleJoin}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? "Joining..." : "Join Event"}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <p className="status-text">Select an event to view details and join.</p>
-          )}
+      {passwordEventId && (
+        <div className="join-panel">
+          <label>Password</label>
+          <input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter event password"
+          />
+
+          <div className="lifecycle-actions">
+            <button
+              className="primary-button"
+              onClick={() => performJoin(passwordEventId, password)}
+              disabled={joiningId === passwordEventId}
+            >
+              Join
+            </button>
+
+            <button
+              className="secondary-button"
+              onClick={() => {
+                setPasswordEventId(null);
+                setPassword("");
+              }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ================= FAB ================= */}
+
+      {isCoordinator && (
+        <button
+          onClick={() => navigate("/events/create")}
+          className="fab-button"
+        >
+          +
+        </button>
+      )}
     </section>
   );
 }
