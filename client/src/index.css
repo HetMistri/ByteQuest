@@ -128,8 +128,8 @@
 
     /* FIX LOGO SIZE */
     .header-logo {
-        width: 28px;
-        height: 28px;
+        width: 48px;
+        height: 48px;
         object-fit: contain;
     }
 
