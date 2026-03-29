@@ -14,7 +14,7 @@ export class ProblemService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly supabaseService: SupabaseService,
-  ) {}
+  ) { }
 
   private async deleteFileFromUrl(fileUrl?: string | null) {
     if (!fileUrl) return;
@@ -123,6 +123,54 @@ export class ProblemService {
         createdAt: true,
       },
     });
+  }
+  async getCurrentProblem(eventId: string, userId: string, role: string) {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        id: true,
+        status: true,
+        createdBy: true,
+        startedAt: true,
+      },
+    });
+
+    if (!event) throw new NotFoundException('Event not found');
+
+    // coordinators → see first problem or full list handled elsewhere
+    if (role === 'coordinator') {
+      return this.prisma.problem.findFirst({
+        where: { eventId },
+        orderBy: { orderIndex: 'asc' },
+      });
+    }
+
+    // get all problems ordered
+    const problems = await this.prisma.problem.findMany({
+      where: { eventId },
+      orderBy: { orderIndex: 'asc' },
+    });
+
+    if (problems.length === 0) return null;
+
+    // get user submissions
+    const submissions = await this.prisma.submission.findMany({
+      where: {
+        eventId,
+        userId,
+        isCorrect: true,
+      },
+      select: {
+        problemId: true,
+      },
+    });
+
+    const solvedSet = new Set(submissions.map((s) => s.problemId));
+
+    // find first unsolved problem
+    const nextProblem = problems.find((p) => !solvedSet.has(p.id));
+
+    return nextProblem ?? null;
   }
 
   async updateProblem(
