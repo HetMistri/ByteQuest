@@ -184,15 +184,14 @@ export default function CreateEventPage({ accessToken }: Props) {
 
   return (
     <section className="menu-panel">
-      <h2 className="section-title">Create Event</h2>
-      <div className="section-divider" />
+      <h2 className="section-title">CREATE EVENT</h2>
 
       {error && <p className="error-text">{error}</p>}
       {success && <p className="success-text">{success}</p>}
 
-      {/* EVENT SETUP */}
+      {/* ================= CONFIG ================= */}
       <div className="create-block">
-        <h3 className="section-title mini">[1] Event Setup</h3>
+        <h3 className="section-title mini">[ CONFIG ]</h3>
 
         <form onSubmit={handleCreateEvent} className="create-form">
           <input
@@ -228,178 +227,148 @@ export default function CreateEventPage({ accessToken }: Props) {
             disabled={!!eventId}
           />
 
-          <button
-            className="primary-button"
-            disabled={isSubmitting || !!eventId}
-          >
-            {eventId ? "Created" : "Create Event"}
+          <button className="primary-button" disabled={isSubmitting || !!eventId}>
+            {eventId ? "CREATED" : "CREATE"}
           </button>
         </form>
       </div>
 
-      {/* PROBLEM WORKSPACE */}
+      {/* ================= WORKSPACE ================= */}
       <div className="create-block">
-        <h3 className="section-title mini">[2] Problem Workspace</h3>
 
         {!eventId && (
-          <p className="status-text compact">Create event first.</p>
+          <p className="status-text compact">Create event first</p>
         )}
 
         {eventId && (
-          <div className="problem-workspace">
-            {/* EDITOR */}
-            <form onSubmit={handleSaveProblem} className="create-form">
-              <input
-                className="form-input"
-                placeholder="> problem_title"
-                value={problemDraft.title}
-                onChange={(e) =>
-                  setProblemDraft((p) => ({
-                    ...p,
-                    title: e.target.value,
-                  }))
-                }
-              />
+          <div className="create-workspace">
+            {/* ===== LEFT: EDITOR ===== */}
+            <div className="create-editor">
+              <h4 className="section-title mini">[ EDITOR ]</h4>
 
-              <input
-                className="form-input"
-                placeholder="> problem_description"
-                value={problemDraft.description}
-                onChange={(e) =>
-                  setProblemDraft((p) => ({
-                    ...p,
-                    description: e.target.value,
-                  }))
-                }
-              />
-
-              <input
-                className="form-input"
-                placeholder="> solution"
-                value={problemDraft.solution}
-                onChange={(e) =>
-                  setProblemDraft((p) => ({
-                    ...p,
-                    solution: e.target.value,
-                  }))
-                }
-              />
-
-              <input
-                type="number"
-                className="form-input"
-                placeholder="> order_index"
-                value={problemDraft.orderIndex ?? ""}
-                onChange={(e) =>
-                  setProblemDraft((p) => ({
-                    ...p,
-                    orderIndex: e.target.value
-                      ? Number(e.target.value)
-                      : undefined,
-                  }))
-                }
-              />
-
-              {/* FILE INPUT */}
-              <input
-                type="file"
-                id="problemFileInput"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] || null;
-                  setProblemDraft((p) => ({
-                    ...p,
-                    file,
-                    existingFileUrl: null,
-                  }));
-                  e.target.value = "";
-                }}
-              />
-
-              {/* FILE UI */}
-              {!problemDraft.file && !problemDraft.existingFileUrl && (
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() =>
-                    document.getElementById("problemFileInput")?.click()
+              <form onSubmit={handleSaveProblem} className="create-form">
+                <input
+                  className="form-input"
+                  placeholder="> title"
+                  value={problemDraft.title}
+                  onChange={(e) =>
+                    setProblemDraft((p) => ({ ...p, title: e.target.value }))
                   }
-                >
-                  + Add Asset
+                />
+
+                <input
+                  className="form-input"
+                  placeholder="> description"
+                  value={problemDraft.description}
+                  onChange={(e) =>
+                    setProblemDraft((p) => ({
+                      ...p,
+                      description: e.target.value,
+                    }))
+                  }
+                />
+
+                <input
+                  className="form-input"
+                  placeholder="> solution"
+                  value={problemDraft.solution}
+                  onChange={(e) =>
+                    setProblemDraft((p) => ({
+                      ...p,
+                      solution: e.target.value,
+                    }))
+                  }
+                />
+
+                {/* FILE UI (clean grouping) */}
+                <div className="file-section">
+                  {!problemDraft.file && !problemDraft.existingFileUrl && (
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() =>
+                        document.getElementById("problemFileInput")?.click()
+                      }
+                    >
+                      + ADD ASSET
+                    </button>
+                  )}
+
+                  {problemDraft.file && (
+                    <div className="file-chip">
+                      <span>{problemDraft.file.name}</span>
+                      <button
+                        type="button"
+                        className="file-remove"
+                        onClick={() =>
+                          setProblemDraft((p) => ({ ...p, file: null }))
+                        }
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+
+                  {!problemDraft.file && problemDraft.existingFileUrl && (
+                    <div className="file-chip">
+                      <span>Existing File</span>
+                      <button
+                        type="button"
+                        className="file-remove"
+                        onClick={() =>
+                          setProblemDraft((p) => ({
+                            ...p,
+                            existingFileUrl: null,
+                          }))
+                        }
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <button className="primary-button" disabled={isSubmitting}>
+                  {editingProblemId ? "UPDATE" : "ADD"}
                 </button>
-              )}
+              </form>
+            </div>
 
-              {problemDraft.file && (
-                <div className="file-chip">
-                  <span>{problemDraft.file.name}</span>
-                  <button
-                    type="button"
-                    className="file-remove"
-                    onClick={() =>
-                      setProblemDraft((p) => ({ ...p, file: null }))
-                    }
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
+            {/* ===== RIGHT: LIST ===== */}
+            <div className="create-list">
+              <h4 className="section-title mini">[ PROBLEMS ]</h4>
 
-              {!problemDraft.file && problemDraft.existingFileUrl && (
-                <div className="file-chip">
-                  <span>Existing File</span>
-                  <button
-                    type="button"
-                    className="file-remove"
-                    onClick={() =>
-                      setProblemDraft((p) => ({
-                        ...p,
-                        existingFileUrl: null,
-                      }))
-                    }
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
+              <div className="problem-list">
+                {problems.map((p) => (
+                  <div key={p.id} className="problem-item">
+                    <span>
+                      #{p.orderIndex} {p.title}
+                    </span>
+                    <button
+                      className="secondary-button small"
+                      onClick={() => startEditing(p)}
+                    >
+                      EDIT
+                    </button>
+                  </div>
+                ))}
+              </div>
 
-              <button className="primary-button" disabled={isSubmitting}>
-                {editingProblemId ? "Update Problem" : "Add Problem"}
-              </button>
-            </form>
+              <div className="create-footer">
+                <p className="status-text">
+                  {problems.length}/{MIN_PROBLEMS_TO_START} required
+                </p>
 
-            {/* LIST */}
-            <div className="problem-list">
-              {problems.map((p) => (
-                <div key={p.id} className="problem-item">
-                  <span>
-                    #{p.orderIndex} {p.title}
-                  </span>
-                  <button
-                    className="secondary-button small"
-                    onClick={() => startEditing(p)}
-                  >
-                    Edit
-                  </button>
-                </div>
-              ))}
+                <button
+                  className="secondary-button"
+                  disabled={problems.length < MIN_PROBLEMS_TO_START}
+                  onClick={() => navigate("/events")}
+                >
+                  DONE
+                </button>
+              </div>
             </div>
           </div>
-        )}
-
-        {eventId && (
-          <>
-            <p className="status-text">
-              Min required: {MIN_PROBLEMS_TO_START} ({problems.length})
-            </p>
-
-            <button
-              className="secondary-button"
-              disabled={problems.length < MIN_PROBLEMS_TO_START}
-              onClick={() => navigate("/events")}
-            >
-              Done
-            </button>
-          </>
         )}
       </div>
     </section>

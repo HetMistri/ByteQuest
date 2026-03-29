@@ -69,49 +69,104 @@ export default function EventResultsPage({ accessToken }: EventResultsPageProps)
   }
 
   return (
-    <section className="menu-panel">
-      <h2 className="section-title">Results</h2>
-      <div className="section-divider" />
-      <p className="status-text">Event: {results.eventName}</p>
-      <p className="status-text">Status: {results.status}</p>
-      <p className="status-text">Your Total Time Spent: {formatDuration(results.totalTimeSpentSeconds)}</p>
-      <p className="status-text">Event Elapsed: {formatDuration(results.totalElapsedSeconds)}</p>
-      <p className="status-text">Time Remaining: {formatDuration(results.timeRemainingSeconds)}</p>
+    <section className="menu-panel results-screen">
+      <div className="results-container">
+        <h2 className="section-title">RESULTS</h2>
 
-      <div className="event-create-panel">
-        <h3 className="section-title mini">Podium</h3>
-        {podium.length === 0 ? <p className="status-text">Leaderboard is not available.</p> : null}
-        <ul className="menu-list">
-          {podium.map((entry) => (
-            <li key={entry.userId} className="menu-item">
-              {entry.rank} place: {entry.displayName?.trim() || `${entry.userId.slice(0, 8)}...`} | Score: {entry.score}
-            </li>
-          ))}
-        </ul>
+
+        {/* ===== PODIUM ===== */}
+        <div className="results-block">
+          <h3 className="section-title mini">[ PODIUM ]</h3>
+
+          {podium.length === 0 ? (
+            <p className="status-text">No leaderboard data.</p>
+          ) : (
+            <div className="leaderboard">
+              {podium.map((entry) => (
+                <div
+                  key={entry.userId}
+                  className={`leaderboard-row rank-${entry.rank}`}
+                >
+                  <span>#{entry.rank}</span>
+                  <span>
+                    {entry.displayName?.trim() ||
+                      `${entry.userId.slice(0, 8)}...`}
+                  </span>
+                  <span>{entry.score}</span>
+                  <span>★</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+
+        {/* ===== SUMMARY ===== */}
+        <div className="results-block">
+          <h3 className="section-title mini">[ SUMMARY ]</h3>
+
+          <p className="results-line">
+            <span className="results-label">&gt; event:</span>
+            <span>{results.eventName}</span>
+          </p>
+
+          <p className="results-line">
+            <span className="results-label">&gt; status:</span>
+            <span>[{results.status}]</span>
+          </p>
+
+          <p className="results-line">
+            <span className="results-label">&gt; your_time:</span>
+            <span>{formatDuration(results.totalTimeSpentSeconds)}</span>
+          </p>
+
+          <p className="results-line">
+            <span className="results-label">&gt; elapsed:</span>
+            <span>{formatDuration(results.totalElapsedSeconds)}</span>
+          </p>
+
+          <p className="results-line">
+            <span className="results-label">&gt; remaining:</span>
+            <span>{formatDuration(results.timeRemainingSeconds)}</span>
+          </p>
+        </div>
+
+        {/* ===== HISTORY ===== */}
+        <div className="results-block">
+          <h3 className="section-title mini">[ HISTORY ]</h3>
+
+          <div className="results-history">
+            {results.history.map((item) => (
+              <div key={item.problemId} className="history-row">
+                <div className="history-main">
+                  <span>
+                    #{item.orderIndex} {item.title}
+                  </span>
+                </div>
+
+                <div className="history-meta">
+                  <span>Attempts: {item.attempts}</span>
+                  <span>Time: {formatDuration(item.timeSpentSeconds)}</span>
+                  <span>Solve: {formatDuration(item.timeToSolveSeconds)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ===== ACTION ===== */}
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() => {
+            clearCompletedEventId();
+            clearActiveEventId();
+            navigate("/events", { replace: true });
+          }}
+        >
+          EXIT
+        </button>
       </div>
-
-      <div className="event-create-panel">
-        <h3 className="section-title mini">Personal History</h3>
-        <ul className="menu-list">
-          {results.history.map((item) => (
-            <li key={item.problemId} className="menu-item">
-              #{item.orderIndex} {item.title} | Attempts: {item.attempts} | Time spent: {formatDuration(item.timeSpentSeconds)} | Time to solve: {formatDuration(item.timeToSolveSeconds)}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <button
-        type="button"
-        className="secondary-button"
-        onClick={() => {
-          clearCompletedEventId();
-          clearActiveEventId();
-          navigate("/events", { replace: true });
-        }}
-      >
-        Back to Events
-      </button>
     </section>
   );
 }

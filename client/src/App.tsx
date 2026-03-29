@@ -3,8 +3,10 @@ import type { Session } from "@supabase/supabase-js";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "./lib/supabase";
 import { getCurrentUserRole, getSession, logout } from "./lib/auth";
+
 import Footer from "./components/Footer";
 import Header from "./components/Header";
+
 import Auth from "./screens/auth/Auth";
 import Menu from "./screens/Menu";
 import Profile from "./screens/Profile";
@@ -18,9 +20,13 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
   const navigate = useNavigate();
   const location = useLocation();
+
   const isAuthenticated = Boolean(session);
+
+  /* ================= INIT ================= */
 
   useEffect(() => {
     const initializeSession = async () => {
@@ -35,10 +41,10 @@ export default function App() {
       setSession(nextSession);
     });
 
-    return () => {
-      data.subscription.unsubscribe();
-    };
+    return () => data.subscription.unsubscribe();
   }, []);
+
+  /* ================= ROLE + THEME ================= */
 
   useEffect(() => {
     const setAccent = async () => {
@@ -50,12 +56,17 @@ export default function App() {
 
       const resolvedRole = await getCurrentUserRole(session.access_token);
       const nextRole = resolvedRole ?? "participant";
+
       setRole(nextRole);
-      document.body.dataset.accent = nextRole === "coordinator" ? "coordinator" : "success";
+
+      document.body.dataset.accent =
+        nextRole === "coordinator" ? "coordinator" : "success";
     };
 
     setAccent();
   }, [session]);
+
+  /* ================= ACTIONS ================= */
 
   const handleLogout = async () => {
     await logout();
@@ -63,37 +74,40 @@ export default function App() {
   };
 
   const handleToggleProfile = () => {
-    if (!isAuthenticated) {
-      return;
-    }
+    if (!isAuthenticated) return;
 
-    if (location.pathname === "/profile") {
-      navigate("/menu");
-      return;
-    }
-
-    navigate("/profile");
+    navigate(location.pathname === "/profile" ? "/menu" : "/profile");
   };
+
+  /* ================= LOADING STATE ================= */
 
   if (isLoading) {
     return (
       <div className="app-shell">
         <Header
           isAuthenticated={false}
-          onLogout={() => undefined}
-          onToggleProfile={() => undefined}
+          onLogout={() => {}}
+          onToggleProfile={() => {}}
           isProfileOpen={false}
           isCoordinator={false}
         />
+
         <div className="app-frame">
           <main className="app-main">
-            <p className="status-text">Loading...</p>
+            <div className="system-loading">
+              <p>&gt; Initializing system...</p>
+              <p>&gt; Connecting to backend...</p>
+              <p>&gt; Loading session...</p>
+            </div>
           </main>
         </div>
+
         <Footer registeredPlayers={21} />
       </div>
     );
   }
+
+  /* ================= MAIN APP ================= */
 
   return (
     <div className="app-shell">
@@ -104,25 +118,30 @@ export default function App() {
         isProfileOpen={location.pathname === "/profile"}
         isCoordinator={role === "coordinator"}
       />
+
       <div className="app-frame">
+        {/* GLOBAL STATUS BAR */}
+        <div className="system-bar">
+          <span>&gt; {isAuthenticated ? "SYSTEM READY" : "AUTH REQUIRED"}</span>
+          {role && <span>{role.toUpperCase()}</span>}
+        </div>
+
         <main className="app-main">
           <Routes>
             <Route path="/" element={<Navigate to={isAuthenticated ? "/menu" : "/auth"} replace />} />
+
             <Route
               path="/auth"
               element={isAuthenticated ? <Navigate to="/menu" replace /> : <Auth />}
             />
+
             <Route
               path="/menu"
               element={
-                isAuthenticated && session ? (
-                  <Menu
-                  />
-                ) : (
-                  <Navigate to="/auth" replace />
-                )
+                isAuthenticated ? <Menu /> : <Navigate to="/auth" replace />
               }
             />
+
             <Route
               path="/events"
               element={
@@ -130,23 +149,24 @@ export default function App() {
                   <EventsPage
                     role={role ?? "participant"}
                     accessToken={session.access_token}
-                    userId={session.user.id}
                   />
                 ) : (
                   <Navigate to="/auth" replace />
                 )
               }
             />
+
             <Route
               path="/events/create"
               element={
-                isAuthenticated && session && role === "coordinator" ? (
+                isAuthenticated && role === "coordinator" && session ? (
                   <CreateEventPage accessToken={session.access_token} />
                 ) : (
                   <Navigate to="/events" replace />
                 )
               }
             />
+
             <Route
               path="/event/waiting"
               element={
@@ -161,6 +181,7 @@ export default function App() {
                 )
               }
             />
+
             <Route
               path="/event/results"
               element={
@@ -171,6 +192,7 @@ export default function App() {
                 )
               }
             />
+
             <Route
               path="/event"
               element={
@@ -185,16 +207,23 @@ export default function App() {
                 )
               }
             />
+
             <Route
               path="/profile"
               element={
-                isAuthenticated && session ? <Profile session={session} /> : <Navigate to="/auth" replace />
+                isAuthenticated && session ? (
+                  <Profile session={session} />
+                ) : (
+                  <Navigate to="/auth" replace />
+                )
               }
             />
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
       </div>
+
       <Footer registeredPlayers={21} />
     </div>
   );

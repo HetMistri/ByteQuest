@@ -28,26 +28,41 @@ export default function EventProgressCard({
   problemTimeSpentSeconds,
   progressPercent,
 }: EventProgressCardProps) {
-  return (
-    <div className="room-panel">
-      <p className="status-text room-text">Event: {eventName}</p>
-      <p className="status-text room-text">Status: {status}</p>
-      <p className="status-text room-text">
-        Total Timer: {formatDuration(totalElapsedSeconds)} / {formatDuration(totalDurationSeconds)}
-      </p>
-      <p className="status-text room-text">Problem Time Spent: {formatDuration(problemTimeSpentSeconds)}</p>
+  const safeTotalProblems = Math.max(totalProblems, 1);
 
-      <div className="progress-wrap" aria-label="Progress">
-        <div className="progress-meta">
-          <span>Progress</span>
-          <span>{progressPercent}%</span>
-        </div>
-        <div className="progress-track">
-          <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
-        </div>
-        <p className="status-text compact">
-          Problem {currentQuestionIndex} / {Math.max(totalProblems, 1)}
-        </p>
+  return (
+    <div className="progress-card">
+      {/* HEADER */}
+      <div className="progress-header">
+        <span className="progress-title">{eventName}</span>
+        <span className={`progress-status status-${status}`}>
+          {status.toUpperCase()}
+        </span>
+      </div>
+
+      {/* TIMERS */}
+      <div className="progress-timers">
+        <span>
+          ⏱ {formatDuration(totalElapsedSeconds)} /{" "}
+          {formatDuration(totalDurationSeconds)}
+        </span>
+        <span>⏳ {formatDuration(problemTimeSpentSeconds)}</span>
+      </div>
+
+      {/* PROGRESS BAR */}
+      <div className="progress-bar">
+        <div
+          className="progress-fill-bar"
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
+
+      {/* META */}
+      <div className="progress-meta">
+        <span>{progressPercent}%</span>
+        <span>
+          Q {currentQuestionIndex} / {safeTotalProblems}
+        </span>
       </div>
     </div>
   );

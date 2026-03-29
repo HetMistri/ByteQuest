@@ -106,29 +106,65 @@ export default function EventWaitingRoom({ accessToken, role, userId }: EventWai
     return <p className="error-text">{error}</p>;
   }
 
-  return (
-    <section className="menu-panel">
-      <h2 className="section-title">Waiting Room</h2>
-      <div className="section-divider" />
+ return (
+  <section className="menu-panel waiting-screen">
+    <div className="waiting-container">
+      <h2 className="section-title">WAITING ROOM</h2>
 
       {event ? (
-        <div className="room-panel">
-          <p className="status-text room-text">Event: {event.name}</p>
-          <p className="status-text room-text">Waiting for admin to start the event</p>
-          {event.startedAt ? (
-            <p className="status-text room-text">Time Remaining: {formatRemaining(remainingSeconds)}</p>
-          ) : (
-            <p className="status-text room-text">Timer starts when event starts</p>
-          )}
-          {eventExpired ? (
-            <button type="button" className="secondary-button" onClick={() => navigate("/events", { replace: true })}>
-              Event expired - Back to Events
+        <>
+          {/* ===== EVENT INFO ===== */}
+          <div className="waiting-block">
+            <h3 className="section-title mini">[ EVENT ]</h3>
+
+            <p className="waiting-line">
+              <span className="waiting-label">&gt; name:</span>
+              <span className="waiting-value">{event.name}</span>
+            </p>
+          </div>
+
+          {/* ===== STATUS ===== */}
+          <div className="waiting-block">
+            <h3 className="section-title mini">[ STATUS ]</h3>
+
+            <p className="status-text">
+              &gt; waiting for coordinator to start...
+            </p>
+          </div>
+
+          {/* ===== TIMER ===== */}
+          <div className="waiting-block">
+            <h3 className="section-title mini">[ TIMER ]</h3>
+
+            {event.startedAt ? (
+              <p className="waiting-timer">
+                {formatRemaining(remainingSeconds)}
+              </p>
+            ) : (
+              <p className="status-text compact">
+                &gt; timer will start on event start
+              </p>
+            )}
+          </div>
+
+          {/* ===== ACTION ===== */}
+          {eventExpired && (
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => navigate("/events", { replace: true })}
+            >
+              EXIT
             </button>
-          ) : null}
-        </div>
+          )}
+        </>
       ) : (
-        <p className="status-text">Loading waiting room...</p>
+        <div className="system-loading">
+          <span>&gt; connecting...</span>
+          <span>&gt; loading event...</span>
+        </div>
       )}
-    </section>
-  );
+    </div>
+  </section>
+);
 }

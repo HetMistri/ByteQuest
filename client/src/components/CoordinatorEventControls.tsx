@@ -6,7 +6,7 @@ type CoordinatorEventControlsProps = {
   onLifecycle: (action: "start" | "pause" | "end") => Promise<void>;
 };
 
-const MIN_PROBLEMS_TO_START = 5;
+const MIN_PROBLEMS_TO_START = 1;
 
 export default function CoordinatorEventControls({
   eventId,
@@ -17,26 +17,58 @@ export default function CoordinatorEventControls({
 }: CoordinatorEventControlsProps) {
   const canStart = totalProblems >= MIN_PROBLEMS_TO_START;
 
+  const isRunning = eventStatus === "running";
+  const isPaused = eventStatus === "paused";
+
   return (
-    <div className="event-column">
-      <h3 className="section-title mini">Event Controls</h3>
-      <p className="status-text compact">Event ID: {eventId}</p>
-      <p className="status-text compact">Problems are editable only in Create Event while status is scheduled.</p>
-      <p className="status-text compact">Problems added: {totalProblems} / {MIN_PROBLEMS_TO_START} minimum to start.</p>
-      <div className="lifecycle-actions">
+    <div className="sidebar-block">
+      {/* HEADER */}
+      <div className="control-header">
+        <span className="control-title">CTRL</span>
+        <span className={`control-status status-${eventStatus}`}>
+          {eventStatus.toUpperCase()}
+        </span>
+      </div>
+
+      {/* META */}
+      <div className="control-meta">
+        <span>ID: {eventId.slice(0, 6)}</span>
+        <span>
+          {totalProblems}/{MIN_PROBLEMS_TO_START}
+        </span>
+      </div>
+
+      {/* ICON ACTIONS */}
+      <div className="control-actions-row">
+        
+        {/* START / RESUME */}
         <button
-          type="button"
-          className="secondary-button"
+          className="control-icon start"
           onClick={() => onLifecycle("start")}
-          disabled={isSubmitting || !canStart}
+          disabled={isSubmitting || (!canStart && !isPaused)}
+          title={isPaused ? "Resume Event" : "Start Event"}
         >
-          {eventStatus === "paused" ? "Resume" : "Start"}
+          ▶
         </button>
-        <button type="button" className="secondary-button" onClick={() => onLifecycle("pause")} disabled={isSubmitting}>
-          Pause
+
+        {/* PAUSE */}
+        <button
+          className="control-icon pause"
+          onClick={() => onLifecycle("pause")}
+          disabled={isSubmitting || !isRunning}
+          title="Pause Event"
+        >
+          ❚❚
         </button>
-        <button type="button" className="secondary-button" onClick={() => onLifecycle("end")} disabled={isSubmitting}>
-          End
+
+        {/* END */}
+        <button
+          className="control-icon end"
+          onClick={() => onLifecycle("end")}
+          disabled={isSubmitting}
+          title="End Event"
+        >
+          ■
         </button>
       </div>
     </div>
