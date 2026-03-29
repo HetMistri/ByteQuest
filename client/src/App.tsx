@@ -15,6 +15,8 @@ import EventWaitingRoom from "./screens/Event/EventWaitingRoom";
 import EventRoom from "./screens/Event/EventRoom";
 import CreateEventPage from "./screens/Event/CreateEventPage";
 import EventResultsPage from "./screens/Event/EventResultsPage";
+import CoordinatorResultPage from "./screens/Event/CoordinatorResultPage";
+
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -86,8 +88,8 @@ export default function App() {
       <div className="app-shell">
         <Header
           isAuthenticated={false}
-          onLogout={() => {}}
-          onToggleProfile={() => {}}
+          onLogout={() => { }}
+          onToggleProfile={() => { }}
           isProfileOpen={false}
           isCoordinator={false}
         />
@@ -176,6 +178,17 @@ export default function App() {
                     role={role ?? "participant"}
                     userId={session.user.id}
                   />
+                ) : (
+                  <Navigate to="/auth" replace />
+                )
+              }
+            />
+            
+            <Route
+              path="/event/coordinator-results"
+              element={
+                isAuthenticated && session ? (
+                  <CoordinatorResultPage accessToken={session.access_token} />
                 ) : (
                   <Navigate to="/auth" replace />
                 )

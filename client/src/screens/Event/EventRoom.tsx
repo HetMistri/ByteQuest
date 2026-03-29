@@ -176,7 +176,7 @@ export default function EventRoom({
         await endEvent(accessToken, event.id);
         setCompletedEventId(event.id);
         clearActiveEventId();
-        navigate("/event/results", { replace: true });
+        navigate("/event/coordinator-results", { replace: true });
         return;
       }
 
