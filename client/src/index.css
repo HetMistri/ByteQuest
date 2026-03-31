@@ -29,6 +29,7 @@
         --font-size-md: 0.8rem;
         --font-size-lg: clamp(1rem, 1.8vw, 2rem);
         --font-size-xl: clamp(1.4rem, 3vw, 2.5rem);
+        --font-family: "Press Start 2P", monospace;
 
         /* SPACING */
         --space-0: 0;
@@ -80,6 +81,7 @@
         margin: 0;
         padding: 0;
         box-sizing: border-box;
+        font-family: var(--font-family);
     }
 }
 
@@ -349,6 +351,7 @@
         color: var(--color-accent-muted);
         cursor: pointer;
         font-size: var(--font-size-sm);
+        font-family: var(--font-family);
     }
 
     /* ACTIVE = prompt style */
