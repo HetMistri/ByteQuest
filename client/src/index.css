@@ -114,6 +114,10 @@
 
     /* ===== HEADER ===== */
 
+    .system-bar{
+        border-bottom: var(--border-thick) solid var(--color-accent-border);
+    }
+
     .header {
         display: flex;
         justify-content: space-between;

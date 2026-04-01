@@ -124,7 +124,7 @@ export default function App() {
       <div className="app-frame">
         {/* GLOBAL STATUS BAR */}
         <div className="system-bar">
-          <span>&gt; {isAuthenticated ? "SYSTEM READY" : "AUTH REQUIRED"}</span>
+          <span>&gt; {isAuthenticated ? "SYSTEM READY" : "Please "}</span>
           {role && <span>{role.toUpperCase()}</span>}
         </div>
 

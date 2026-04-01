@@ -9,10 +9,10 @@ export default function Auth() {
 
     return (
         <section className="menu-panel">
-            <h2 className="section-title">You Need to login to continue</h2>
-            <div className="section-divider" />
+            {/* <div className="section-divider" /> */}
 
             <div className="auth-screen">
+                <div className="section-divider" />
                 <div className="tabs">
                     <button
                         type="button"
