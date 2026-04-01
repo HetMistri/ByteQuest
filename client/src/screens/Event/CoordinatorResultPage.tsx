@@ -13,6 +13,7 @@ import {
   type EventDetails,
 } from "../../lib/events";
 import { getErrorMessage } from "../../lib/error-message";
+import CelebrationConfetti from "../../components/CelebrationConfetti";
 
 
 type CoordinatorResultPageProps = {
@@ -62,6 +63,7 @@ export default function CoordinatorResultPage({ accessToken }: CoordinatorResult
 
   return (
     <section className="menu-panel results-screen">
+      <CelebrationConfetti active={podium.length > 0} />
       <div className="results-container">
         <h2 className="section-title">EVENT SUMMARY (COORDINATOR)</h2>
         <p className="status-text">You are viewing the event summary as a coordinator. No personal stats are shown.</p>

@@ -13,6 +13,7 @@ import {
   type PersonalResultsResponse,
 } from "../../lib/events";
 import { getErrorMessage } from "../../lib/error-message";
+import CelebrationConfetti from "../../components/CelebrationConfetti";
 
 type EventResultsPageProps = {
   accessToken: string;
@@ -75,6 +76,7 @@ export default function EventResultsPage({ accessToken }: EventResultsPageProps)
 
   return (
     <section className="menu-panel results-screen">
+      <CelebrationConfetti active={podium.length > 0} />
       <div className="results-container">
         <h2 className="section-title">RESULTS</h2>
 
