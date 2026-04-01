@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { login, loginWithGithub, loginWithGoogle } from "../../lib/auth";
+import { useToast } from "../../components/ToastProvider";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const toast = useToast();
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -16,6 +18,9 @@ export default function Login() {
 
     if (result.error) {
       setErrorMessage(result.error);
+      toast.error(`Login failed because credentials were rejected or the account is not confirmed: ${result.error}`);
+    } else {
+      toast.success("Login successful. Session established and workspace is loading.");
     }
 
     setIsSubmitting(false);
@@ -25,14 +30,22 @@ export default function Login() {
     const result = await loginWithGoogle();
     if (result.error) {
       setErrorMessage(result.error);
+      toast.error(`Google OAuth could not start: ${result.error}`);
+      return;
     }
+
+    toast.warn("You are being redirected to Google to complete OAuth authentication.");
   };
 
   const handleGithubLogin = async () => {
     const result = await loginWithGithub();
     if (result.error) {
       setErrorMessage(result.error);
+      toast.error(`GitHub OAuth could not start: ${result.error}`);
+      return;
     }
+
+    toast.warn("You are being redirected to GitHub to complete OAuth authentication.");
   };
 
   return (

@@ -12,6 +12,7 @@ import {
   type LeaderboardEntry,
   type EventDetails,
 } from "../../lib/events";
+import { getErrorMessage } from "../../lib/error-message";
 
 
 type CoordinatorResultPageProps = {
@@ -39,8 +40,12 @@ export default function CoordinatorResultPage({ accessToken }: CoordinatorResult
         ]);
         setEvent(eventDetails);
         setPodium(leaderboard.slice(0, 3));
-      } catch {
-        setError("Could not load event results.");
+      } catch (error) {
+        const reason = getErrorMessage(
+          error,
+          "Result endpoints were unreachable or access to this event result is denied.",
+        );
+        setError(`Coordinator results unavailable: ${reason}`);
       }
     };
 

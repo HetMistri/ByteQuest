@@ -7,6 +7,8 @@ import {
   type EventSummary,
 } from "../../lib/events";
 import { setActiveEventId } from "../../lib/event-session";
+import { useToast } from "../../components/ToastProvider";
+import { getErrorMessage } from "../../lib/error-message";
 
 type EventsPageProps = {
   role: string;
@@ -24,6 +26,7 @@ export default function EventPage({ role, accessToken }: EventsPageProps) {
 
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const toast = useToast();
 
   const isCoordinator = role === "coordinator";
 
@@ -32,8 +35,11 @@ export default function EventPage({ role, accessToken }: EventsPageProps) {
       try {
         const data = await listScheduledEvents(accessToken);
         setEvents(data);
-      } catch {
-        setError("Could not load events.");
+      } catch (error) {
+        const reason = getErrorMessage(error, "The event list request failed before data was returned.");
+        const message = `Unable to load events: ${reason}`;
+        setError(message);
+        toast.error(message);
       } finally {
         setLoading(false);
       }
@@ -43,7 +49,8 @@ export default function EventPage({ role, accessToken }: EventsPageProps) {
   useEffect(() => {
     if (searchParams.get("kicked") !== "1") return;
 
-    setError("You were kicked from the event.");
+    setError("You were removed from the event by the coordinator, so your previous event session was closed.");
+    toast.warn("Access revoked: the coordinator removed your participant record from that event.");
     const next = new URLSearchParams(searchParams);
     next.delete("kicked");
     setSearchParams(next, { replace: true });
@@ -61,14 +68,22 @@ export default function EventPage({ role, accessToken }: EventsPageProps) {
       setActiveEventId(eventId);
       const details = await getEventDetails(accessToken, eventId);
 
+      toast.success(`Joined event ${details.name} successfully.`);
+
       navigate(
         isCoordinator || details.status === "running"
           ? "/event"
           : "/event/waiting",
         { replace: true }
       );
-    } catch {
-      setError("Join failed. Check password or event state.");
+    } catch (error) {
+      const reason = getErrorMessage(
+        error,
+        "The join request was rejected because the password is incorrect, the event is not joinable, or your token is invalid.",
+      );
+      const message = `Unable to join event: ${reason}`;
+      setError(message);
+      toast.error(message);
     } finally {
       setJoiningId(null);
       setPasswordEventId(null);

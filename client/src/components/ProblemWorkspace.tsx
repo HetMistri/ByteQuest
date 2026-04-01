@@ -4,6 +4,7 @@ import type {
   SubmissionResult,
   ProblemRecord,
 } from "../lib/events";
+import MarkdownContent from "./MarkdownContent";
 
 type ProblemWorkspaceProps = {
   isCoordinator: boolean;
@@ -54,9 +55,10 @@ export default function ProblemWorkspace({
                     #{problem.orderIndex} {problem.title}
                   </span>
 
-                  <p className="problem-desc">
-                    {problem.description}
-                  </p>
+                  <MarkdownContent
+                    markdown={problem.description}
+                    className="problem-desc markdown-content"
+                  />
 
                   {problem.resourceFile && (
                     <span className="resource-indicator">
@@ -91,7 +93,10 @@ export default function ProblemWorkspace({
         #{problem.orderIndex} {problem.title}
       </h3>
 
-      <p className="problem-desc">{problem.description}</p>
+      <MarkdownContent
+        markdown={problem.description}
+        className="problem-desc markdown-content"
+      />
 
       {/* ===== RESOURCE ===== */}
       {problem.resourceFile && (

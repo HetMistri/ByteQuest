@@ -40,9 +40,9 @@ export default function Profile({ session }: ProfileProps) {
     });
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(`Profile update rejected by Supabase: ${error.message}`);
     } else {
-      setMessage("Profile updated.");
+      setMessage("Profile updated successfully. New display name and phone are now stored in your Supabase user metadata.");
     }
 
     setIsSaving(false);

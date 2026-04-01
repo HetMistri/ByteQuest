@@ -27,6 +27,8 @@ import ProblemWorkspace from "../../components/ProblemWorkspace";
 import CoordinatorEventControls from "../../components/CoordinatorEventControls";
 import LeaderboardPanel from "../../components/LeaderboardPanel";
 import ProblemRoadmap from "../../components/ProblemRoadmap";
+import { useToast } from "../../components/ToastProvider";
+import { getErrorMessage } from "../../lib/error-message";
 
 type EventRoomProps = {
   accessToken: string;
@@ -51,6 +53,7 @@ export default function EventRoom({
   const navigate = useNavigate();
   const isCoordinator = role === "coordinator";
   const activeEventId = getActiveEventId();
+  const toast = useToast();
 
   const MIN_PROBLEMS_TO_START = 5;
 
@@ -110,6 +113,7 @@ export default function EventRoom({
 
         if (!stillJoined) {
           clearActiveEventId();
+          toast.warn("Event access removed: your participant entry no longer exists, likely due to a coordinator kick.");
           navigate("/events?kicked=1", { replace: true });
           return;
         }
@@ -124,10 +128,16 @@ export default function EventRoom({
           navigate("/event/waiting", { replace: true });
         }
       }
-    } catch {
-      setError("Failed to load event room.");
+    } catch (error) {
+      const reason = getErrorMessage(
+        error,
+        "The event detail or participant sync request failed.",
+      );
+      const message = `Event room refresh failed: ${reason}`;
+      setError(message);
+      toast.error(message);
     }
-  }, [accessToken, activeEventId, isCoordinator, navigate, userId]);
+  }, [accessToken, activeEventId, isCoordinator, navigate, toast, userId]);
 
   useEffect(() => {
     loadRoom();
@@ -163,6 +173,7 @@ export default function EventRoom({
       setError(
         `Minimum ${MIN_PROBLEMS_TO_START} problems required to start.`
       );
+      toast.warn(`Event start blocked: only ${event.totalProblems ?? 0} problems are configured, but ${MIN_PROBLEMS_TO_START} are required.`);
       return;
     }
 
@@ -174,15 +185,24 @@ export default function EventRoom({
       if (action === "pause") await pauseEvent(accessToken, event.id);
       if (action === "end") {
         await endEvent(accessToken, event.id);
+        toast.warn("Event status changed to ended. Redirecting to coordinator results view.");
         setCompletedEventId(event.id);
         clearActiveEventId();
         navigate("/event/coordinator-results", { replace: true });
         return;
       }
 
+      toast.success(`Event status updated successfully: ${event.status} -> ${action === "start" ? "running" : "paused"}.`);
+
       await loadRoom();
-    } catch {
-      setError(`Failed to ${action} event.`);
+    } catch (error) {
+      const reason = getErrorMessage(
+        error,
+        `The ${action} action was rejected by server-side event lifecycle rules.`,
+      );
+      const message = `Could not ${action} event: ${reason}`;
+      setError(message);
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -213,10 +233,24 @@ export default function EventRoom({
           : result
       );
 
+      if (result.completed) {
+        toast.success("Submission accepted and all unlocked problems are completed. Waiting for coordinator to end event.");
+      } else if (result.isCorrect) {
+        toast.success(`Correct submission recorded: ${result.message}`);
+      } else {
+        toast.warn(`Submission recorded but incorrect: ${result.message}`);
+      }
+
       setAnswer("");
       await loadRoom();
-    } catch {
-      setError("Submission failed.");
+    } catch (error) {
+      const reason = getErrorMessage(
+        error,
+        "The answer was not accepted because the event is not running, the problem is locked, or membership is invalid.",
+      );
+      const message = `Submission failed: ${reason}`;
+      setError(message);
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -230,9 +264,16 @@ export default function EventRoom({
 
     try {
       await kickParticipant(accessToken, event.id, targetUserId);
+      toast.warn(`Participant ${targetUserId.slice(0, 8)} was removed from this event by coordinator action.`);
       await loadRoom();
-    } catch {
-      setError("Failed to kick participant.");
+    } catch (error) {
+      const reason = getErrorMessage(
+        error,
+        "Kick request was denied because the requester is not the event creator or the participant is not in this event.",
+      );
+      const message = `Could not remove participant: ${reason}`;
+      setError(message);
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }

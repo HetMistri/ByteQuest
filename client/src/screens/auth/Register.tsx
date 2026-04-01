@@ -1,5 +1,6 @@
 import { register } from "../../lib/auth";
 import { useState, type FormEvent } from "react";
+import { useToast } from "../../components/ToastProvider";
 
 export default function Register() {
   const [displayName, setDisplayName] = useState("");
@@ -9,6 +10,7 @@ export default function Register() {
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const toast = useToast();
 
   const handleRegister = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -25,9 +27,12 @@ export default function Register() {
 
     if (result.error) {
       setErrorMessage(result.error);
+      toast.error(`Registration failed because Supabase rejected the signup request: ${result.error}`);
     } else {
-      setMessage(result.message ?? "Registered successfully.");
+      const successMessage = result.message ?? "Registered successfully.";
+      setMessage(successMessage);
       setPassword("");
+      toast.success("Registration accepted. Check your inbox if email verification is enabled before logging in.");
     }
 
     setIsSubmitting(false);

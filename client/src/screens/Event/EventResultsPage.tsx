@@ -12,6 +12,7 @@ import {
   type LeaderboardEntry,
   type PersonalResultsResponse,
 } from "../../lib/events";
+import { getErrorMessage } from "../../lib/error-message";
 
 type EventResultsPageProps = {
   accessToken: string;
@@ -52,8 +53,12 @@ export default function EventResultsPage({ accessToken }: EventResultsPageProps)
 
         setResults(response);
         setPodium(leaderboard.slice(0, 3));
-      } catch {
-        setError("Could not load personal results.");
+      } catch (error) {
+        const reason = getErrorMessage(
+          error,
+          "Personal results could not be fetched because the event session is invalid, membership is missing, or backend is unavailable.",
+        );
+        setError(`Personal results unavailable: ${reason}`);
       }
     };
 

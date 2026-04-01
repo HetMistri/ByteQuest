@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import {
@@ -9,6 +9,9 @@ import {
   type CreateEventInput,
   type ProblemRecord,
 } from "../../lib/events";
+import MarkdownContent from "../../components/MarkdownContent";
+import { useToast } from "../../components/ToastProvider";
+import { getErrorMessage } from "../../lib/error-message";
 
 type Props = {
   accessToken: string;
@@ -51,6 +54,8 @@ export default function CreateEventPage({ accessToken }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const toast = useToast();
+  const problemFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const navigate = useNavigate();
 
@@ -107,9 +112,16 @@ export default function CreateEventPage({ accessToken }: Props) {
       setEventId(created.id);
       await refreshProblems(created.id);
       setSuccess("Event created. Now configure problems.");
-    } catch (err) {
-      console.error(err);
-      setError("Could not create event.");
+      toast.success(`Event ${created.name} created. Configure at least ${MIN_PROBLEMS_TO_START} problems.`);
+    } catch (error) {
+      console.error(error);
+      const reason = getErrorMessage(
+        error,
+        "Event creation was rejected by validation or coordinator authorization rules.",
+      );
+      const message = `Event creation failed: ${reason}`;
+      setError(message);
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -160,9 +172,16 @@ export default function CreateEventPage({ accessToken }: Props) {
       setEditingProblemId(null);
       await refreshProblems(eventId);
       setSuccess("Problem saved.");
-    } catch (err) {
-      console.error("SAVE ERROR:", err);
-      setError("Failed to save problem.");
+      toast.success(editingProblemId ? "Problem updated successfully." : "Problem added successfully.");
+    } catch (error) {
+      console.error("SAVE ERROR:", error);
+      const reason = getErrorMessage(
+        error,
+        "Problem save was rejected due to invalid data, duplicate order index, or event status not being scheduled.",
+      );
+      const message = `Problem save failed: ${reason}`;
+      setError(message);
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -178,6 +197,15 @@ export default function CreateEventPage({ accessToken }: Props) {
       existingFileUrl: p.resourceFile || null,
       orderIndex: p.orderIndex,
     });
+  };
+
+  const handleProblemFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0] ?? null;
+    setProblemDraft((previous) => ({
+      ...previous,
+      file: selectedFile,
+      existingFileUrl: selectedFile ? null : previous.existingFileUrl,
+    }));
   };
 
   /* ================= UI ================= */
@@ -256,9 +284,9 @@ export default function CreateEventPage({ accessToken }: Props) {
                   }
                 />
 
-                <input
-                  className="form-input"
-                  placeholder="> description"
+                <textarea
+                  className="form-input problem-description-input"
+                  placeholder="> description (markdown supported)"
                   value={problemDraft.description}
                   onChange={(e) =>
                     setProblemDraft((p) => ({
@@ -266,7 +294,16 @@ export default function CreateEventPage({ accessToken }: Props) {
                       description: e.target.value,
                     }))
                   }
+                  rows={8}
                 />
+
+                <div className="markdown-preview">
+                  <span className="status-text compact">Markdown preview</span>
+                  <MarkdownContent
+                    markdown={problemDraft.description || "_Start typing description in Markdown..._"}
+                    className="problem-desc markdown-content"
+                  />
+                </div>
 
                 <input
                   className="form-input"
@@ -286,13 +323,19 @@ export default function CreateEventPage({ accessToken }: Props) {
                     <button
                       type="button"
                       className="secondary-button"
-                      onClick={() =>
-                        document.getElementById("problemFileInput")?.click()
-                      }
+                      onClick={() => problemFileInputRef.current?.click()}
                     >
                       + ADD ASSET
                     </button>
                   )}
+
+                  <input
+                    id="problemFileInput"
+                    ref={problemFileInputRef}
+                    type="file"
+                    onChange={handleProblemFileChange}
+                    style={{ display: "none" }}
+                  />
 
                   {problemDraft.file && (
                     <div className="file-chip">
